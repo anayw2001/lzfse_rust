@@ -47,8 +47,8 @@ impl BitDst for Vec<u8> {
         debug_assert!(n_bytes <= mem::size_of::<usize>());
         let index = self.len();
         assert!(mem::size_of::<usize>() <= self.capacity() - self.len());
-        let le_bytes = bytes.to_le_bytes();
-        let src = le_bytes.as_ptr();
+        let src_bytes = bytes.to_le_bytes();
+        let src = src_bytes.as_ptr();
         let dst = self.as_mut_ptr().add(index);
         ptr::copy_nonoverlapping(src, dst, mem::size_of::<usize>());
         self.set_len(index + n_bytes);

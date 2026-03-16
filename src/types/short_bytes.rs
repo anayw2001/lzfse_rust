@@ -7,7 +7,7 @@ use std::slice;
 
 /// Byte wrapper with a a maximum length of `T::SHORT_LIMIT` and at least `W::WIDTH` slack bytes.
 #[derive(Copy, Clone)]
-pub struct ShortBytes<'a, T, W>(&'a [u8], PhantomData<T>, PhantomData<W>);
+pub struct ShortBytes<'a, T, W>(*const u8, usize, PhantomData<T>, PhantomData<W>, PhantomData<&'a ()>);
 
 impl<'a, T: ShortLimit, W: Width> ShortBytes<'a, T, W> {
     #[allow(dead_code)]
@@ -31,7 +31,7 @@ impl<'a, T: ShortLimit, W: Width> ShortBytes<'a, T, W> {
     #[inline(always)]
     pub unsafe fn from_raw_parts(ptr: *const u8, len: usize) -> Self {
         debug_assert!(len <= T::SHORT_LIMIT as usize);
-        Self(slice::from_raw_parts(ptr, len), PhantomData::default(), PhantomData::default())
+        Self(ptr, len, PhantomData::default(), PhantomData::default(), PhantomData::default())
     }
 }
 
@@ -39,7 +39,7 @@ impl<'a, T, W: Width> CopyLong for ShortBytes<'a, T, W> {
     #[inline(always)]
     unsafe fn copy_long_raw(&self, dst: *mut u8, len: usize) {
         debug_assert!(len <= self.len());
-        CopyTypeLong::wide_copy::<W>(self.0.as_ptr(), dst, len);
+        CopyTypeLong::wide_copy::<W>(self.0, dst, len);
     }
 }
 
@@ -47,14 +47,14 @@ impl<'a, T: ShortLimit, W: Width> CopyShort for ShortBytes<'a, T, W> {
     #[inline(always)]
     unsafe fn copy_short_raw<V: CopyType>(&self, dst: *mut u8, len: usize) {
         debug_assert!(len <= self.len());
-        V::wide_copy::<W>(self.0.as_ptr(), dst, len);
+        V::wide_copy::<W>(self.0, dst, len);
     }
 }
 
 impl<'a, T, W> Len for ShortBytes<'a, T, W> {
     #[inline(always)]
     fn len(&self) -> usize {
-        self.0.len()
+        self.1
     }
 }
 
@@ -66,7 +66,8 @@ impl<'a, T, W> Skip for ShortBytes<'a, T, W> {
     #[inline(always)]
     unsafe fn skip_unchecked(&mut self, len: usize) {
         debug_assert!(len <= self.len());
-        self.0 = self.0.get_unchecked(len..);
+        self.0 = self.0.add(len);
+        self.1 -= len;
     }
 }
 
@@ -75,6 +76,6 @@ impl<'a, T, W> Deref for ShortBytes<'a, T, W> {
 
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
-        self.0
+        unsafe { slice::from_raw_parts(self.0, self.1) }
     }
 }

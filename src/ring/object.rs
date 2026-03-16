@@ -16,6 +16,13 @@ pub const OVERMATCH_LEN: usize = 5 * mem::size_of::<usize>();
 
 pub struct Ring<'a, T>(*mut u8, PhantomData<T>, PhantomData<&'a mut ()>);
 
+impl<'a, T> Ring<'a, T> {
+    pub fn full_ptr(&self) -> *mut u8 {
+        self.0
+    }
+}
+
+
 // Implementation notes:
 //
 // Hybrid ring buffer.

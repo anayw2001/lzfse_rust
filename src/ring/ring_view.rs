@@ -25,7 +25,7 @@ impl<'a, T: RingType> RingView<'a, T> {
     pub fn new(ring: &'a Ring<T>, head: Idx, tail: Idx) -> Self {
         debug_assert!((tail - head) as u32 <= T::RING_SIZE);
         Self {
-            ring_ptr: ring.as_ptr(),
+            ring_ptr: ring.full_ptr(),
             head,
             tail,
             _phantom: (PhantomData::default(), PhantomData::default()),
