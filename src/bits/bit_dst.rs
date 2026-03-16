@@ -47,6 +47,8 @@ impl BitDst for Vec<u8> {
         debug_assert!(n_bytes <= mem::size_of::<usize>());
         let index = self.len();
         assert!(mem::size_of::<usize>() <= self.capacity() - self.len());
+        // We bind to a variable to ensure the pointer remains valid for the copy operation,
+        // preventing a Miri error where the temporary byte array is dropped too early.
         let src_bytes = bytes.to_le_bytes();
         let src = src_bytes.as_ptr();
         let dst = self.as_mut_ptr().add(index);

@@ -25,6 +25,7 @@ impl<'a, T: RingType> RingView<'a, T> {
     pub fn new(ring: &'a Ring<T>, head: Idx, tail: Idx) -> Self {
         debug_assert!((tail - head) as u32 <= T::RING_SIZE);
         Self {
+            // We use the full pointer to maintain provenance over the entire ring buffer.
             ring_ptr: ring.full_ptr(),
             head,
             tail,

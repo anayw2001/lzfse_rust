@@ -6,6 +6,10 @@ use std::ops::Deref;
 use std::slice;
 
 /// Byte wrapper with a a maximum length of `T::SHORT_LIMIT` and at least `W::WIDTH` slack bytes.
+///
+/// We use a raw pointer and length instead of a slice to maintain pointer provenance
+/// over the entire required memory range (including slack). This avoids Miri errors
+/// when `wide_copy` reads beyond the nominal length of the data.
 #[derive(Copy, Clone)]
 pub struct ShortBytes<'a, T, W>(*const u8, usize, PhantomData<T>, PhantomData<W>, PhantomData<&'a ()>);
 
