@@ -7,21 +7,22 @@ pub trait Limit: Len {
     fn limit(&mut self, len: usize);
 }
 
-impl Limit for &[u8] {
+impl<'a> Limit for &'a [u8] {
     #[inline(always)]
     fn limit(&mut self, len: usize) {
-        let len = <[u8]>::len(self).min(len);
-        *self = unsafe { self.get_unchecked(..len) }
+        let len = self.len().min(len);
+        *self = &self[..len];
     }
 }
 
-impl Limit for &mut [u8] {
+impl<'a> Limit for &'a mut [u8] {
     #[inline(always)]
     fn limit(&mut self, len: usize) {
-        let len = <[u8]>::len(self).min(len);
-        *self = unsafe { mem::take(self).get_unchecked_mut(..len) };
+        let len = self.len().min(len);
+        *self = &mut mem::take(self)[..len];
     }
 }
+
 
 impl<T: Limit + ?Sized> Limit for &mut T {
     #[inline(always)]

@@ -39,7 +39,7 @@ impl<'a> PokeData for WideBytesMut<'a> {
     #[inline(always)]
     unsafe fn poke_data(&mut self, src: &[u8]) {
         debug_assert!(src.len() <= WIDE);
-        self.0.get_unchecked_mut(..src.len()).copy_from_slice(src);
+        self.0[..src.len()].copy_from_slice(src);
     }
 }
 
@@ -58,7 +58,7 @@ impl<'a> Skip for WideBytesMut<'a> {
     #[inline(always)]
     unsafe fn skip_unchecked(&mut self, len: usize) {
         debug_assert!(len <= self.len());
-        self.0 = mem::take(&mut self.0).get_unchecked_mut(len..);
+        self.0 = &mut mem::take(&mut self.0)[len..];
     }
 }
 

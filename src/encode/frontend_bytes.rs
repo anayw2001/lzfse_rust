@@ -291,12 +291,12 @@ impl<'a> FrontendBytes<'a> {
         m: Match,
     ) -> io::Result<()> {
         debug_assert!(self.validate_match::<B::Type>(m));
-        let match_distance = MatchDistance::new_unchecked((m.idx - m.match_idx) as u32);
+        let match_distance = MatchDistance::new((m.idx - m.match_idx) as u32);
         let literal_index = self.literal_index as usize;
         let match_index = usize::from(m.idx);
         debug_assert!(literal_index <= self.block.len());
         debug_assert!(match_index <= self.block.len());
-        let literals = self.block.get_unchecked(literal_index..match_index);
+        let literals = &self.block[literal_index..match_index];
         self.literal_index = u32::from(m.idx) + m.match_len;
         backend.push_match(dst, literals, m.match_len, match_distance)
     }
@@ -326,7 +326,7 @@ impl<'a> FrontendBytes<'a> {
         debug_assert_eq!(self.pending.match_len, 0);
         debug_assert!(self.literal_index as usize + len as usize <= self.block.len());
         let literal_index = self.literal_index as usize;
-        let literals = self.block.get_unchecked(literal_index..literal_index + len as usize);
+        let literals = &self.block[literal_index..literal_index + len as usize];
         self.literal_index += len;
         backend.push_literals(dst, literals)
     }

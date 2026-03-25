@@ -32,7 +32,7 @@ impl HistoryTable {
 
     #[inline(always)]
     fn get_mut<M: MatchUnit>(&mut self, val: u32) -> &mut History {
-        unsafe { self.0.get_unchecked_mut(index::<M>(val)) }
+        &mut self.0[index::<M>(val)]
     }
 
     /// Clamp all history `idx` values to a maximum of `idx - Q1` with respect to the specified

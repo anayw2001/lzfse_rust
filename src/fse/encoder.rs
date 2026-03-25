@@ -36,15 +36,15 @@ impl Encoder {
         debug_assert!(L_STATES <= state.0);
         debug_assert!(state.0 < 2 * L_STATES);
         let v = v.get() as usize;
-        let symbol = *L_BASE_FROM_VALUE.get_unchecked(v) as usize;
+        let symbol = L_BASE_FROM_VALUE[v] as usize;
         debug_assert!(symbol <= L_EXTRA_BITS.len());
-        let n_bits = *L_EXTRA_BITS.get_unchecked(symbol) as usize;
+        let n_bits = L_EXTRA_BITS[symbol] as usize;
         debug_assert!(symbol <= L_BASE_VALUE.len());
-        let base_v = *L_BASE_VALUE.get_unchecked(symbol) as usize;
+        let base_v = L_BASE_VALUE[symbol] as usize;
         let bits = v - base_v;
         writer.push_unchecked(bits, n_bits);
         debug_assert!(symbol <= self.0.len());
-        self.0.get_unchecked(symbol).encode(writer, &mut state.0)
+        self.0[symbol].encode(writer, &mut state.0)
     }
 
     /// # Safety
@@ -58,15 +58,15 @@ impl Encoder {
         debug_assert!(M_STATES <= state.0);
         debug_assert!(state.0 < 2 * M_STATES);
         let v = v.get() as usize;
-        let symbol = *M_BASE_FROM_VALUE.get_unchecked(v) as usize;
+        let symbol = M_BASE_FROM_VALUE[v] as usize;
         debug_assert!(symbol <= M_EXTRA_BITS.len());
-        let n_bits = *M_EXTRA_BITS.get_unchecked(symbol) as usize;
+        let n_bits = M_EXTRA_BITS[symbol] as usize;
         debug_assert!(symbol <= M_BASE_VALUE.len());
-        let base_v = *M_BASE_VALUE.get_unchecked(symbol) as usize;
+        let base_v = M_BASE_VALUE[symbol] as usize;
         let bits = v - base_v;
         writer.push_unchecked(bits, n_bits);
         debug_assert!(symbol <= self.1.len());
-        self.1.get_unchecked(symbol).encode(writer, &mut state.0)
+        self.1[symbol].encode(writer, &mut state.0)
     }
 
     /// # Safety
@@ -82,15 +82,15 @@ impl Encoder {
         let v = v.get() as usize;
         let index = constants::d_index(v);
         debug_assert!(index <= D_BASE_FROM_VALUE.len());
-        let symbol = *D_BASE_FROM_VALUE.get_unchecked(index) as usize;
+        let symbol = D_BASE_FROM_VALUE[index] as usize;
         debug_assert!(symbol <= D_EXTRA_BITS.len());
-        let n_bits = *D_EXTRA_BITS.get_unchecked(symbol) as usize;
+        let n_bits = D_EXTRA_BITS[symbol] as usize;
         debug_assert!(symbol <= D_BASE_VALUE.len());
-        let base_v = *D_BASE_VALUE.get_unchecked(symbol) as usize;
+        let base_v = D_BASE_VALUE[symbol] as usize;
         let bits = v - base_v;
         writer.push_unchecked(bits, n_bits);
         debug_assert!(symbol <= self.2.len());
-        self.2.get_unchecked(symbol).encode(writer, &mut state.0)
+        self.2[symbol].encode(writer, &mut state.0)
     }
 
     /// # Safety
@@ -103,7 +103,7 @@ impl Encoder {
     {
         debug_assert!(U_STATES <= state.0);
         debug_assert!(state.0 < 2 * U_STATES);
-        self.3.get_unchecked(u as usize).encode(writer, &mut state.0)
+        self.3[u as usize].encode(writer, &mut state.0)
     }
 }
 
@@ -137,8 +137,8 @@ macro_rules! create_state_struct {
 
         impl $name {
             #[inline]
-            pub unsafe fn new_unchecked(v: u32) -> Self {
-                debug_assert!(v < $max);
+            pub fn new(v: u32) -> Self {
+                assert!(v < $max);
                 Self($max + v)
             }
         }
@@ -193,7 +193,7 @@ impl EEntry {
         let n_bits = (self.t_k as i32 + s as i32) as u32 >> 10;
         *state = (self.t_w as i32 + ((s as i32) >> n_bits)) as u32;
         debug_assert!(n_bits <= 10);
-        let mask = *MASK_TABLE.get_unchecked(n_bits as usize) as usize;
+        let mask = MASK_TABLE[n_bits as usize] as usize;
         let bits = s as usize & mask;
         writer.push_unchecked(bits, n_bits as usize);
     }
@@ -224,7 +224,7 @@ pub fn build_e_table(weights: &[u16], n_states: u32, table: &mut [EEntry]) {
     let mut e = EEntry::default();
     let mut total = 0;
     for i in 0..weights.len() {
-        let w = *unsafe { weights.get_unchecked(i) } as u32;
+        let w = weights[i] as u32;
         if w == 0 {
             e.t_k = -(n_states as i16);
             e.t_w = 0;
@@ -234,7 +234,7 @@ pub fn build_e_table(weights: &[u16], n_states: u32, table: &mut [EEntry]) {
             e.t_k = 1024 * k as i16 - ((w) << k) as i16;
             e.t_w = n_states as i16 + total as i16 - w as i16;
         }
-        *unsafe { table.get_unchecked_mut(i) } = e;
+        table[i] = e;
         total += w;
     }
 }

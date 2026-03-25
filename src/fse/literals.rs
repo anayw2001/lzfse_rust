@@ -135,13 +135,14 @@ impl Literals {
     #[inline(always)]
     pub fn pad(&mut self) {
         debug_assert!(self.1 <= LITERALS_PER_BLOCK as usize);
-        self.pad_u(unsafe { *self.0.get_unchecked(0) });
+        let u = self.0[0];
+        self.pad_u(u);
     }
 
     #[inline(always)]
     pub fn pad_u(&mut self, u: u8) {
         debug_assert!(self.1 <= LITERALS_PER_BLOCK as usize);
-        unsafe { self.0.get_unchecked_mut(self.1..).get_unchecked_mut(..4) }.fill(u);
+        self.0[self.1..][..4].fill(u);
     }
 
     #[inline(always)]
@@ -166,7 +167,7 @@ impl AsRef<[u8]> for Literals {
     #[inline(always)]
     fn as_ref(&self) -> &[u8] {
         debug_assert!(self.1 <= LITERALS_PER_BLOCK as usize);
-        unsafe { self.0.get_unchecked(..self.1) }
+        &self.0[..self.1]
     }
 }
 

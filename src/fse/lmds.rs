@@ -20,9 +20,10 @@ impl Lmds {
     #[inline(always)]
     pub unsafe fn push_unchecked(&mut self, lmd: LmdPack<Fse>) {
         debug_assert!(self.1 < LMDS_PER_BLOCK as usize);
-        *self.0.get_unchecked_mut(self.1) = lmd;
+        self.0[self.1] = lmd;
         self.1 += 1;
     }
+
 
     pub fn load<T>(&mut self, src: T, decoder: &Decoder, param: &LmdParam) -> crate::Result<()>
     where
@@ -37,7 +38,7 @@ impl Lmds {
         );
         let n_lmds = param.num() as usize;
         debug_assert!(n_lmds <= LMDS_PER_BLOCK as usize);
-        for lmd in unsafe { self.0.get_unchecked_mut(..n_lmds) } {
+        for lmd in &mut self.0[..n_lmds] {
             // `flush` constraints:
             // 32 bit systems: flush after each L, M, D component pull.
             // 64 bit systems: flush after all L, M, D components have been pulled.
@@ -71,7 +72,7 @@ impl Lmds {
         let mut writer = BitWriter::new(dst, n_bytes)?;
         let mut state = (encoder::L::default(), encoder::M::default(), encoder::D::default());
         for &LmdPack(literal_len, match_len, match_distance_zeroed) in
-            unsafe { self.0.get_unchecked(..self.1).iter().rev() }
+            self.0[..self.1].iter().rev()
         {
             // `flush` constraints:
             // 32 bit systems: flush after each L, M, D component pull.

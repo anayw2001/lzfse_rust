@@ -40,12 +40,12 @@ impl Weights {
             // We trust the LmdPack<Fse> structure and omit bounds checking.
             let d_index = constants::d_index(match_distance_zeroed.get() as usize);
             unsafe {
-                let l_base = *L_BASE_FROM_VALUE.get_unchecked(literal_len.get() as usize) as usize;
-                let m_base = *M_BASE_FROM_VALUE.get_unchecked(match_len.get() as usize) as usize;
-                let d_base = *D_BASE_FROM_VALUE.get_unchecked(d_index) as usize;
-                *self.0[L_RANGE].get_unchecked_mut(l_base) += 1;
-                *self.0[M_RANGE].get_unchecked_mut(m_base) += 1;
-                *self.0[D_RANGE].get_unchecked_mut(d_base) += 1
+                let l_base = L_BASE_FROM_VALUE[literal_len.get() as usize] as usize;
+                let m_base = M_BASE_FROM_VALUE[match_len.get() as usize] as usize;
+                let d_base = D_BASE_FROM_VALUE[d_index] as usize;
+                self.0[L_RANGE][l_base] += 1;
+                self.0[M_RANGE][m_base] += 1;
+                self.0[D_RANGE][d_base] += 1
             }
         }
         normalize_m1(&mut self.0[L_RANGE], lmds.len() as u32, L_STATES);
@@ -86,7 +86,7 @@ impl Weights {
         let mut i = 0;
         for weight in self.0.iter_mut() {
             while i != src.len() && accum_bits <= 24 {
-                accum |= (unsafe { *src.get_unchecked(i) } as usize) << accum_bits;
+                accum |= (src[i] as usize) << accum_bits;
                 accum_bits += 8;
                 i += 1;
             }
@@ -118,7 +118,7 @@ impl Weights {
             let w = self.0[i];
             let bytes = w.to_le_bytes();
             let j = i * 2;
-            unsafe { dst.get_unchecked_mut(j..j + mem::size_of::<u16>()).copy_from_slice(&bytes) };
+            dst[j..j + mem::size_of::<u16>()].copy_from_slice(&bytes);
         }
         for i in N_WEIGHTS * 2..V1_WEIGHT_PAYLOAD_BYTES as usize {
             dst[i] = 0;
@@ -148,7 +148,7 @@ impl Weights {
             accum_bits += u_bits;
             while accum_bits >= 8 {
                 debug_assert!(i <= dst.len());
-                *unsafe { dst.get_unchecked_mut(i) } = accum as u8;
+                dst[i] = accum as u8;
                 accum >>= 8;
                 accum_bits -= 8;
                 i += 1;
@@ -156,7 +156,7 @@ impl Weights {
         }
         if accum_bits > 0 {
             debug_assert!(i <= dst.len());
-            *unsafe { dst.get_unchecked_mut(i) } = accum as u8;
+            dst[i] = accum as u8;
             i += 1;
         }
         i as u32

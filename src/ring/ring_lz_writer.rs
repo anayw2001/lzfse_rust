@@ -42,7 +42,7 @@ impl<'a, O, T: RingType> RingLzWriter<'a, O, T> {
             }
             unsafe { ptr::copy_nonoverlapping(src, dst.as_mut_ptr(), limit) };
             idx += limit as u32;
-            dst = unsafe { dst.get_unchecked_mut(limit..) };
+            dst = &mut dst[limit..];
         }
     }
 }
@@ -62,7 +62,7 @@ impl<'a, O: Write, T: RingType> RingLzWriter<'a, O, T> {
             return Err(Error::BufferOverflow);
         }
         let index = self.index as u32 % T::RING_SIZE;
-        let bytes = unsafe { &self.ring.get_unchecked(..index as usize) };
+        let bytes = &self.ring[..index as usize];
         self.inner.write_all(bytes)?;
         Ok(self.inner)
     }

@@ -100,7 +100,7 @@ impl Buffer {
     unsafe fn push_l(&mut self, l: u16) {
         debug_assert!(l <= Fse::MAX_LITERAL_LEN);
         self.match_distance = 1;
-        self.lmds.push_unchecked(LmdPack::<Fse>::new_unchecked(l, 0, 1));
+        self.lmds.push_unchecked(LmdPack::<Fse>::new(l, 0, 1));
     }
 
     #[inline(always)]
@@ -112,7 +112,7 @@ impl Buffer {
         } else {
             self.match_distance = d;
         }
-        self.lmds.push_unchecked(LmdPack::<Fse>::new_unchecked(l, m, d));
+        self.lmds.push_unchecked(LmdPack::<Fse>::new(l, m, d));
         self.n_match_bytes += m as u32;
     }
 

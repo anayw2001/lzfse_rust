@@ -173,9 +173,9 @@ impl<'a, I: for<'b> ByteReader<'b>> Read for ReaderCore<'a, I> {
         loop {
             debug_assert!(self.idx <= self.ring.pos());
             let limit = ((self.ring.pos() - self.idx) as usize).min(buf.len());
-            self.ring.copy(unsafe { buf.get_unchecked_mut(..limit) }, self.idx);
+            self.ring.copy(&mut buf[..limit], self.idx);
             self.idx += limit as u32;
-            buf = unsafe { buf.get_unchecked_mut(limit..) };
+            buf = &mut buf[limit..];
             if buf.is_empty() {
                 break;
             }

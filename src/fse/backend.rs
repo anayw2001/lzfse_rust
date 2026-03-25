@@ -69,8 +69,9 @@ impl Backend for FseBackend {
         dst: &mut O,
         literals: I,
     ) -> io::Result<()> {
-        self.push_match(dst, literals, 0, unsafe { MatchDistance::new_unchecked(1) })
+        self.push_match(dst, literals, 0, MatchDistance::new(1))
     }
+
 
     #[inline(always)]
     fn push_match<I: ShortBuffer, O: ShortWriter>(

@@ -172,7 +172,7 @@ impl FseCore {
                 }
             }
             let &LmdPack(literal_len_pack, match_len_pack, match_distance_pack) =
-                unsafe { lmds.get_unchecked(lmd_index as usize) };
+                &lmds[lmd_index as usize];
             let literal_len: LiteralLen<Fse> = literal_len_pack.into();
             let match_len: MatchLen<Fse> = match_len_pack.into();
             match_distance.substitute(match_distance_pack);

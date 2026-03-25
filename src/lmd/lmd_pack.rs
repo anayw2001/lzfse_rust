@@ -17,15 +17,6 @@ impl<T: LmdMax> LmdPack<T> {
             MatchDistancePack::new(match_distance),
         )
     }
-
-    #[inline(always)]
-    pub unsafe fn new_unchecked(literal_len: u16, match_len: u16, match_distance: u32) -> Self {
-        Self(
-            LiteralLenPack::new_unchecked(literal_len),
-            MatchLenPack::new_unchecked(match_len),
-            MatchDistancePack::new_unchecked(match_distance),
-        )
-    }
 }
 
 impl<T: LmdMax> Default for LmdPack<T> {

@@ -155,9 +155,9 @@ impl<'a, T: Copy + RingBlock> FrontendRing<'a, T> {
         debug_assert!(self.validate_global());
         debug_assert_eq!(self.tail % T::RING_BLK_SIZE, 0);
         let index = self.tail % T::RING_SIZE as usize;
-        let bytes =
-            unsafe { self.ring.get_unchecked_mut(index..index + T::RING_BLK_SIZE as usize) };
-        let len = src.read_fully(bytes)?;
+        let mut dst = &mut self.ring[index..index + T::RING_BLK_SIZE as usize];
+
+        let len = src.read_fully(dst)?;
         self.tail += len as u32;
         self.n_raw_bytes += len as u64;
         Ok(len == T::RING_BLK_SIZE as usize)
@@ -200,10 +200,12 @@ impl<'a, T: Copy + RingBlock> FrontendRing<'a, T> {
 
     #[inline(always)]
     unsafe fn write_block_len(&mut self, src: &mut &[u8], index: usize, len: usize) {
-        self.ring.get_unchecked_mut(index..index + len).copy_from_slice(src.get_unchecked(..len));
+        self.ring[index..index + len].copy_from_slice(&src[..len]);
         self.tail += len as u32;
-        *src = src.get_unchecked(len..);
+        self.n_raw_bytes += len as u64;
+        *src = &src[len..];
     }
+
 
     // #[inline(always)]
     fn match_block<B, O>(&mut self, backend: &mut B, dst: &mut O) -> io::Result<()>
@@ -528,7 +530,7 @@ impl<'a, T: Copy + RingBlock> FrontendRing<'a, T> {
     ) -> io::Result<()> {
         debug_assert!(self.validate_match::<B::Type>(m));
         let match_len = m.match_len;
-        let match_distance = MatchDistance::new_unchecked((m.idx - m.match_idx) as u32);
+        let match_distance = MatchDistance::new((m.idx - m.match_idx) as u32);
         let literals = self.ring.view(self.literal_idx, m.idx);
         self.literal_idx = m.idx + m.match_len;
         backend.push_match(dst, literals, match_len, match_distance)

@@ -56,14 +56,6 @@ macro_rules! create_type_struct {
                 Self(u, PhantomData::default())
             }
 
-            #[allow(unused_comparisons)]
-            #[inline(always)]
-            pub unsafe fn new_unchecked(u: $u) -> Self {
-                debug_assert!($min <= u);
-                debug_assert!(u <= T::$max as $u);
-                Self(u, PhantomData::default())
-            }
-
             #[inline(always)]
             pub fn get(self) -> $u {
                 self.0
@@ -87,7 +79,7 @@ create_type_struct!(LiteralLen, u32, LMax, 0, MAX_LITERAL_LEN);
 impl<T: LMax> From<LiteralLenPack<T>> for LiteralLen<T> {
     #[inline(always)]
     fn from(other: LiteralLenPack<T>) -> Self {
-        unsafe { Self::new_unchecked(other.0 as u32) }
+        Self::new(other.0 as u32)
     }
 }
 
@@ -103,7 +95,7 @@ create_type_struct!(LiteralLenPack, u16, LMax, 0, MAX_LITERAL_LEN);
 impl<T: LMax> From<LiteralLen<T>> for LiteralLenPack<T> {
     #[inline(always)]
     fn from(other: LiteralLen<T>) -> Self {
-        unsafe { Self::new_unchecked(other.0 as u16) }
+        Self::new(other.0 as u16)
     }
 }
 
@@ -115,7 +107,7 @@ create_type_struct!(MatchLen, u32, MMax, 0, MAX_MATCH_LEN);
 impl<T: MMax> From<MatchLenPack<T>> for MatchLen<T> {
     #[inline(always)]
     fn from(other: MatchLenPack<T>) -> Self {
-        unsafe { Self::new_unchecked(other.0 as u32) }
+        Self::new(other.0 as u32)
     }
 }
 
@@ -131,7 +123,7 @@ create_type_struct!(MatchLenPack, u16, MMax, 0, MAX_MATCH_LEN);
 impl<T: MMax> From<MatchLen<T>> for MatchLenPack<T> {
     #[inline(always)]
     fn from(other: MatchLen<T>) -> Self {
-        unsafe { Self::new_unchecked(other.0 as u16) }
+        Self::new(other.0 as u16)
     }
 }
 

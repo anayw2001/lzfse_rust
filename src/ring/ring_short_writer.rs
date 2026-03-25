@@ -165,7 +165,7 @@ impl<'a, O, T: RingType> PatchInto for RingShortWriter<'a, O, T> {
         assert!(self.head <= pos);
         assert!(pos + len as u32 <= self.idx);
         let position = pos % T::RING_SIZE as usize;
-        unsafe { self.ring.get_unchecked_mut(position..position + len) }
+        &mut self.ring[position..position + len]
     }
 }
 

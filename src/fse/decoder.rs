@@ -76,7 +76,7 @@ impl Decoder {
     {
         debug_assert!(state.check());
         debug_assert!(state.0 < self.0.len());
-        LiteralLen::new_unchecked(self.0.get_unchecked(state.0).decode(reader, &mut state.0))
+        LiteralLen::new(self.0[state.0].decode(reader, &mut state.0))
     }
 
     /// # Safety
@@ -90,7 +90,7 @@ impl Decoder {
     {
         debug_assert!(state.check());
         debug_assert!(state.0 < self.0.len());
-        MatchLen::new_unchecked(self.0.get_unchecked(state.0).decode(reader, &mut state.0))
+        MatchLen::new(self.0[state.0].decode(reader, &mut state.0))
     }
 
     /// # Safety
@@ -104,7 +104,7 @@ impl Decoder {
     ) -> MatchDistancePack<Fse> {
         debug_assert!(state.check());
         debug_assert!(state.0 < self.0.len());
-        MatchDistancePack::new_unchecked(self.0.get_unchecked(state.0).decode(reader, &mut state.0))
+        MatchDistancePack::new(self.0[state.0].decode(reader, &mut state.0))
     }
 
     /// # Safety
@@ -117,7 +117,7 @@ impl Decoder {
     {
         debug_assert!(state.check());
         debug_assert!(state.0 < self.1.len());
-        self.1.get_unchecked(state.0).decode(reader, &mut state.0)
+        self.1[state.0].decode(reader, &mut state.0)
     }
 }
 
@@ -256,26 +256,26 @@ unsafe fn build_v_table_block(
     let mut e = VEntry::default();
     let mut total = 0;
     for i in 0..weights.len() {
-        let w = *weights.get_unchecked(i) as u32;
+        let w = weights[i] as u32;
         if w == 0 {
             continue;
         }
         debug_assert!(total + w <= n_states);
         let k = w.leading_zeros() - n_clz;
         let x = ((n_states << 1) >> k) - w;
-        let v_bits = *v_bits_table.get_unchecked(i);
-        let v_base = *v_base_table.get_unchecked(i);
+        let v_bits = v_bits_table[i];
+        let v_base = v_base_table[i];
         e.k = k as u8;
         e.v_bits = v_bits;
         e.v_base = v_base;
         for j in 0..x {
             e.delta = (((w as i32 + j as i32) << k) - n_states as i32) as i16 + offset;
-            *table.get_unchecked_mut((total + j) as usize) = e;
+            table[(total + j) as usize] = e;
         }
         e.k = (k as i32 - 1) as u8;
         for j in x..w {
             e.delta = ((j - x) << (k - 1)) as i16 + offset;
-            *table.get_unchecked_mut((total + j) as usize) = e;
+            table[(total + j) as usize] = e;
         }
         total += w;
     }
@@ -286,8 +286,7 @@ unsafe fn build_v_table_block(
     // and consume no additional input bits. This invalid state, or the lack of a final resting
     // init state, can be easily detected and handled by callers.
     for i in (total as usize)..table.len() {
-        *table.get_unchecked_mut(i) =
-            VEntry { k: 0, v_bits: 0, delta: offset + i as i16, v_base: 0 };
+        table[i] = VEntry { k: 0, v_bits: 0, delta: offset + i as i16, v_base: 0 };
     }
 }
 
@@ -303,7 +302,7 @@ pub unsafe fn build_u_table(weights: &[u16], table: &mut [UEntry]) {
     let mut e = UEntry::default();
     let mut total = 0;
     for i in 0..weights.len() {
-        let w = *weights.get_unchecked(i) as u32;
+        let w = weights[i] as u32;
         if w == 0 {
             continue;
         }
@@ -314,12 +313,12 @@ pub unsafe fn build_u_table(weights: &[u16], table: &mut [UEntry]) {
         e.k = k as u8;
         for j in 0..x {
             e.delta = (((w as i32 + j as i32) << k) - n_states as i32) as i16;
-            *table.get_unchecked_mut((total + j) as usize) = e;
+            table[(total + j) as usize] = e;
         }
         e.k = (k as i32 - 1) as u8;
         for j in x..w {
             e.delta = ((j - x) << (k - 1)) as i16;
-            *table.get_unchecked_mut((total + j) as usize) = e;
+            table[(total + j) as usize] = e;
         }
         total += w;
     }
@@ -330,6 +329,6 @@ pub unsafe fn build_u_table(weights: &[u16], table: &mut [UEntry]) {
     // and consume no additional input bits. This invalid state, or the lack of a final resting
     // init state, can be easily detected and handled by callers.
     for i in (total as usize)..table.len() {
-        *table.get_unchecked_mut(i) = UEntry { k: 0, symbol: 0, delta: i as i16 };
+        table[i] = UEntry { k: 0, symbol: 0, delta: i as i16 };
     }
 }

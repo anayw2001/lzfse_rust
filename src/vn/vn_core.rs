@@ -159,21 +159,21 @@ impl VnCore {
         debug_assert!(src.len() >= 8);
         let opu = src.as_ptr().cast::<u32>().read_unaligned().to_le();
         let n_payload_bytes = match OP_TABLE[opu as usize & 0xFF] {
-            Op::SmlL => self.typ_l(dst, src.get_unchecked(1..), opc::decode_sml_l(opu))? + 1,
-            Op::LrgL => self.typ_l(dst, src.get_unchecked(2..), opc::decode_lrg_l(opu))? + 2,
-            Op::SmlM => self.typ_m(dst, src.get_unchecked(1..), opc::decode_sml_m(opu))? + 1,
-            Op::LrgM => self.typ_m(dst, src.get_unchecked(2..), opc::decode_lrg_m(opu))? + 2,
-            Op::PreD => self.pre_d(dst, src.get_unchecked(1..), opc::decode_pre_d(opu))? + 1,
-            Op::SmlD => self.typ_d(dst, src.get_unchecked(2..), opc::decode_sml_d(opu))? + 2,
-            Op::MedD => self.typ_d(dst, src.get_unchecked(3..), opc::decode_med_d(opu))? + 3,
-            Op::LrgD => self.typ_d(dst, src.get_unchecked(3..), opc::decode_lrg_d(opu))? + 3,
-            Op::Nop => self.nop(src.get_unchecked(1..))? + 1,
+            Op::SmlL => self.typ_l(dst, &src[1..], opc::decode_sml_l(opu))? + 1,
+            Op::LrgL => self.typ_l(dst, &src[2..], opc::decode_lrg_l(opu))? + 2,
+            Op::SmlM => self.typ_m(dst, &src[1..], opc::decode_sml_m(opu))? + 1,
+            Op::LrgM => self.typ_m(dst, &src[2..], opc::decode_lrg_m(opu))? + 2,
+            Op::PreD => self.pre_d(dst, &src[1..], opc::decode_pre_d(opu))? + 1,
+            Op::SmlD => self.typ_d(dst, &src[2..], opc::decode_sml_d(opu))? + 2,
+            Op::MedD => self.typ_d(dst, &src[3..], opc::decode_med_d(opu))? + 3,
+            Op::LrgD => self.typ_d(dst, &src[3..], opc::decode_lrg_d(opu))? + 3,
+            Op::Nop => self.nop(&src[1..])? + 1,
             Op::Eos => return self.eos(src),
             Op::Udef => return Err(VnErrorKind::BadOpcode.into()),
         };
         debug_assert!(n_payload_bytes as usize + 8 <= src.len());
         debug_assert_ne!(n_payload_bytes, 0);
-        Ok(Some(NonZeroU32::new_unchecked(n_payload_bytes)))
+        Ok(Some(NonZeroU32::new(n_payload_bytes).unwrap()))
     }
 
     fn eos(&self, src: &[u8]) -> crate::Result<Option<NonZeroU32>> {
@@ -220,7 +220,7 @@ impl VnCore {
         if src.len() < 8 {
             return Err(crate::Error::PayloadUnderflow);
         }
-        let match_len = MatchLen::new_unchecked(match_len);
+        let match_len = MatchLen::new(match_len);
         write_match(dst, match_len, self.match_distance)?;
         Ok(0)
     }
@@ -246,8 +246,8 @@ impl VnCore {
             return Err(crate::Error::PayloadUnderflow);
         }
         let bytes = src.as_ptr().cast::<u32>().read_unaligned();
-        let literal_len = LiteralLen::new_unchecked(literal_len);
-        let match_len = MatchLen::new_unchecked(match_len);
+        let literal_len = LiteralLen::new(literal_len);
+        let match_len = MatchLen::new(match_len);
         dst.write_quad(bytes, literal_len)?;
         write_match(dst, match_len, self.match_distance)?;
         Ok(literal_len.get())
@@ -276,9 +276,9 @@ impl VnCore {
             return Err(crate::Error::PayloadUnderflow);
         }
         let bytes = src.as_ptr().cast::<u32>().read_unaligned();
-        let literal_len = LiteralLen::new_unchecked(literal_len);
-        let match_len = MatchLen::new_unchecked(match_len);
-        let match_distance = MatchDistanceUnpack::new_unchecked(match_distance);
+        let literal_len = LiteralLen::new(literal_len);
+        let match_len = MatchLen::new(match_len);
+        let match_distance = MatchDistanceUnpack::new(match_distance);
         self.match_distance = match_distance;
         dst.write_quad(bytes, literal_len)?;
         write_match(dst, match_len, match_distance)?;

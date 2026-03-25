@@ -59,8 +59,8 @@ unsafe impl<'a> ShortLimit for WideBytes<'a> {
 impl<'a> Skip for WideBytes<'a> {
     #[inline(always)]
     unsafe fn skip_unchecked(&mut self, len: usize) {
-        debug_assert!(len <= self.len());
-        self.0 = self.0.get_unchecked(len..);
+        debug_assert!(len <= self.0.len());
+        self.0 = &self.0[len..];
     }
 }
 
