@@ -129,10 +129,10 @@ impl VnCore {
         // If `dst_mark == u64;:MAX` and inlined the compiler should elide this check.
         while dst.n_raw_bytes() <= dst_mark {
             if let Some(n_payload_bytes) = unsafe { self.atomic_op(dst, src.short_bytes())? } {
-                unsafe { src.skip_unchecked(n_payload_bytes.get() as usize) };
+                src.skip_unchecked(n_payload_bytes.get() as usize);
             } else {
                 debug_assert!(src.len() >= 8);
-                unsafe { src.skip_unchecked(8) };
+                src.skip_unchecked(8);
                 return Ok(false);
             }
         }

@@ -68,15 +68,15 @@ impl<'a, T, W> Len for ShortBytes<'a, T, W> {
     }
 }
 
-unsafe impl<'a, T: ShortLimit, W> ShortLimit for ShortBytes<'a, T, W> {
+impl<'a, T: ShortLimit, W> ShortLimit for ShortBytes<'a, T, W> {
     const SHORT_LIMIT: u32 = T::SHORT_LIMIT;
 }
 
 impl<'a, T, W> Skip for ShortBytes<'a, T, W> {
     #[inline(always)]
-    unsafe fn skip_unchecked(&mut self, len: usize) {
+    fn skip_unchecked(&mut self, len: usize) {
         debug_assert!(len <= self.len());
-        self.0 = self.0.add(len);
+        self.0 = unsafe { self.0.add(len) };
         self.1 -= len;
     }
 }

@@ -52,13 +52,13 @@ impl<'a> Len for WideBytes<'a> {
     }
 }
 
-unsafe impl<'a> ShortLimit for WideBytes<'a> {
+impl<'a> ShortLimit for WideBytes<'a> {
     const SHORT_LIMIT: u32 = i32::MAX as u32;
 }
 
 impl<'a> Skip for WideBytes<'a> {
     #[inline(always)]
-    unsafe fn skip_unchecked(&mut self, len: usize) {
+    fn skip_unchecked(&mut self, len: usize) {
         debug_assert!(len <= self.0.len());
         self.0 = &self.0[len..];
     }

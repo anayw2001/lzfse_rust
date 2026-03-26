@@ -130,16 +130,15 @@ impl<'a, O, T> Truncate for RingShortWriter<'a, O, T> {
     }
 }
 
-impl<'a, O, T: RingType> WriteData for RingShortWriter<'a, O, T> {
+impl<'a, O: Write, T: RingType> WriteData for RingShortWriter<'a, O, T> {
     #[inline(always)]
-    unsafe fn write_data(&mut self, src: &[u8]) {
-        // Overflows caught on flush.
+    fn write_data(&mut self, src: &[u8]) {
         debug_assert!(src.len() <= WIDE);
         let len = src.len();
         let index = self.idx % T::RING_SIZE as usize;
-        let dst = self.ring.as_mut_ptr().add(index);
-        let src = src.as_ptr();
-        ptr::copy_nonoverlapping(src, dst, len);
+        let dst = unsafe { self.ring.as_mut_ptr().add(index) };
+        let src_ptr = src.as_ptr();
+        unsafe { ptr::copy_nonoverlapping(src_ptr, dst, len) };
         self.idx += len as u32;
     }
 }
@@ -183,7 +182,7 @@ impl<'a, O, T: RingBlock> WriteShort for RingShortWriter<'a, O, T> {
     }
 }
 
-unsafe impl<'a, O, T: RingType> ShortLimit for RingShortWriter<'a, O, T> {
+impl<'a, O, T: RingType> ShortLimit for RingShortWriter<'a, O, T> {
     const SHORT_LIMIT: u32 = T::RING_LIMIT;
 }
 
@@ -265,7 +264,7 @@ mod tests {
             wtr.flush(false)?;
             bytes = &bytes[delta..];
             for index in (0..LIMIT as usize).step_by(WIDE) {
-                unsafe { wtr.write_data(&bytes[index..index + WIDE]) };
+                wtr.write_data(&bytes[index..index + WIDE]);
             }
             let (dst, n) = wtr.into_inner()?;
             assert!(dst == src[..delta + LIMIT as usize]);

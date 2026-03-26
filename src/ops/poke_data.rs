@@ -5,44 +5,40 @@ pub trait PokeData {
     #[allow(dead_code)]
     #[inline(always)]
     fn poke_u8(&mut self, v: u8) {
-        unsafe { self.poke_data(v.to_le_bytes().as_ref()) };
+        self.poke_data(v.to_le_bytes().as_ref());
     }
 
     #[allow(dead_code)]
     #[inline(always)]
     fn poke_u16(&mut self, v: u16) {
-        unsafe { self.poke_data(v.to_le_bytes().as_ref()) };
+        self.poke_data(v.to_le_bytes().as_ref());
     }
 
     #[allow(dead_code)]
     #[inline(always)]
     fn poke_u32(&mut self, v: u32) {
-        unsafe { self.poke_data(v.to_le_bytes().as_ref()) };
+        self.poke_data(v.to_le_bytes().as_ref());
     }
 
     #[allow(dead_code)]
     #[inline(always)]
     fn poke_u64(&mut self, v: u64) {
-        unsafe { self.poke_data(v.to_le_bytes().as_ref()) };
+        self.poke_data(v.to_le_bytes().as_ref());
     }
 
     #[allow(dead_code)]
     #[inline(always)]
     fn poke_usize(&mut self, v: usize) {
-        unsafe { self.poke_data(v.to_le_bytes().as_ref()) };
+        self.poke_data(v.to_le_bytes().as_ref());
     }
 
     /// Truncated to remaining buffer bytes.
-    ///
-    /// # Safety
-    ///
-    /// * `src.len() <= WIDE`
-    unsafe fn poke_data(&mut self, src: &[u8]);
+    fn poke_data(&mut self, src: &[u8]);
 }
 
 impl PokeData for [u8] {
     #[inline(always)]
-    unsafe fn poke_data(&mut self, src: &[u8]) {
+    fn poke_data(&mut self, src: &[u8]) {
         debug_assert!(src.len() <= WIDE);
         if src.len() <= self.len() {
             (self[..src.len()]).copy_from_slice(src);
@@ -84,7 +80,7 @@ impl<T: PokeData + ?Sized> PokeData for &mut T {
     }
 
     #[inline(always)]
-    unsafe fn poke_data(&mut self, src: &[u8]) {
+    fn poke_data(&mut self, src: &[u8]) {
         (**self).poke_data(src)
     }
 }

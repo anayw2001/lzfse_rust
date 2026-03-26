@@ -38,7 +38,7 @@ impl<'a> WideBytesMut<'a> {
 
 impl<'a> PokeData for WideBytesMut<'a> {
     #[inline(always)]
-    unsafe fn poke_data(&mut self, src: &[u8]) {
+    fn poke_data(&mut self, src: &[u8]) {
         debug_assert!(src.len() <= WIDE);
         self.0[..src.len()].copy_from_slice(src);
     }
@@ -46,7 +46,7 @@ impl<'a> PokeData for WideBytesMut<'a> {
 
 impl<'a> WriteData for WideBytesMut<'a> {
     #[inline(always)]
-    unsafe fn write_data(&mut self, src: &[u8]) {
+    fn write_data(&mut self, src: &[u8]) {
         // Overflows panic.
         debug_assert!(src.len() <= WIDE);
         assert!(src.len() <= self.len());
@@ -57,7 +57,7 @@ impl<'a> WriteData for WideBytesMut<'a> {
 
 impl<'a> Skip for WideBytesMut<'a> {
     #[inline(always)]
-    unsafe fn skip_unchecked(&mut self, len: usize) {
+    fn skip_unchecked(&mut self, len: usize) {
         debug_assert!(len <= self.len());
         self.0 = &mut mem::take(&mut self.0)[len..];
     }

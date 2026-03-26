@@ -83,7 +83,7 @@ impl<T: LMax> From<LiteralLenPack<T>> for LiteralLen<T> {
     }
 }
 
-unsafe impl<T: LMax> ShortLimit for LiteralLen<T> {
+impl<T: LMax> ShortLimit for LiteralLen<T> {
     const SHORT_LIMIT: u32 = T::MAX_LITERAL_LEN as u32;
 }
 
@@ -111,7 +111,7 @@ impl<T: MMax> From<MatchLenPack<T>> for MatchLen<T> {
     }
 }
 
-unsafe impl<T: MMax> ShortLimit for MatchLen<T> {
+impl<T: MMax> ShortLimit for MatchLen<T> {
     const SHORT_LIMIT: u32 = T::MAX_MATCH_LEN as u32;
 }
 

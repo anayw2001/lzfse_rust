@@ -14,7 +14,7 @@ impl Truncate for Vec<u8> {
         let delta = self.pos() - idx;
         let index = (self.len() as isize - delta as isize) as usize;
         if index <= self.len() {
-            unsafe { self.set_len(index) };
+            Vec::<u8>::truncate(self, index);
             true
         } else {
             false

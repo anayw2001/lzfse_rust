@@ -75,7 +75,7 @@ impl<'a, O, T: RingType> Pos for RingLzWriter<'a, O, T> {
     }
 }
 
-unsafe impl<'a, O, T: RingType> ShortLimit for RingLzWriter<'a, O, T> {
+impl<'a, O, T: RingType> ShortLimit for RingLzWriter<'a, O, T> {
     const SHORT_LIMIT: u32 = T::RING_LIMIT;
 }
 

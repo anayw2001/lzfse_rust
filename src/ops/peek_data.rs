@@ -8,7 +8,7 @@ pub trait PeekData {
     #[inline(always)]
     fn peek_u8(&self) -> u8 {
         let mut bytes = [0u8; mem::size_of::<u8>()];
-        unsafe { self.peek_data(&mut bytes) };
+        self.peek_data(&mut bytes);
         u8::from_le_bytes(bytes)
     }
 
@@ -16,14 +16,14 @@ pub trait PeekData {
     #[inline(always)]
     fn peek_u16(&self) -> u16 {
         let mut bytes = [0u8; mem::size_of::<u16>()];
-        unsafe { self.peek_data(&mut bytes) };
+        self.peek_data(&mut bytes);
         u16::from_le_bytes(bytes)
     }
 
     #[inline(always)]
     fn peek_u32(&self) -> u32 {
         let mut bytes = [0u8; mem::size_of::<u32>()];
-        unsafe { self.peek_data(&mut bytes) };
+        self.peek_data(&mut bytes);
         u32::from_le_bytes(bytes)
     }
 
@@ -31,7 +31,7 @@ pub trait PeekData {
     #[inline(always)]
     fn peek_u64(&self) -> u64 {
         let mut bytes = [0u8; mem::size_of::<u64>()];
-        unsafe { self.peek_data(&mut bytes) };
+        self.peek_data(&mut bytes);
         u64::from_le_bytes(bytes)
     }
 
@@ -39,21 +39,17 @@ pub trait PeekData {
     #[inline(always)]
     fn peek_usize(&self) -> usize {
         let mut bytes = [0u8; mem::size_of::<usize>()];
-        unsafe { self.peek_data(&mut bytes) };
+        self.peek_data(&mut bytes);
         usize::from_le_bytes(bytes)
     }
 
     /// Overflow bytes are undefined.
-    ///
-    /// # Safety
-    ///
-    /// * `dst.len() <= WIDE`
-    unsafe fn peek_data(&self, dst: &mut [u8]);
+    fn peek_data(&self, dst: &mut [u8]);
 }
 
 impl PeekData for [u8] {
     #[inline(always)]
-    unsafe fn peek_data(&self, dst: &mut [u8]) {
+    fn peek_data(&self, dst: &mut [u8]) {
         debug_assert!(dst.len() <= WIDE);
         if dst.len() <= self.len() {
             dst.copy_from_slice(&self[..dst.len()]);
@@ -94,7 +90,7 @@ impl<T: PeekData + ?Sized> PeekData for &T {
     }
 
     #[inline(always)]
-    unsafe fn peek_data(&self, dst: &mut [u8]) {
+    fn peek_data(&self, dst: &mut [u8]) {
         (**self).peek_data(dst)
     }
 }
@@ -130,7 +126,7 @@ impl<T: PeekData + ?Sized> PeekData for &mut T {
     }
 
     #[inline(always)]
-    unsafe fn peek_data(&self, dst: &mut [u8]) {
+    fn peek_data(&self, dst: &mut [u8]) {
         (**self).peek_data(dst)
     }
 }

@@ -6,28 +6,28 @@ pub trait ReadData {
     #[inline(always)]
     fn read_u8(&mut self) -> u8 {
         let mut bytes = [0u8; mem::size_of::<u8>()];
-        unsafe { self.read_data(&mut bytes) };
+        self.read_data(&mut bytes);
         u8::from_le_bytes(bytes)
     }
 
     #[inline(always)]
     fn read_u16(&mut self) -> u16 {
         let mut bytes = [0u8; mem::size_of::<u16>()];
-        unsafe { self.read_data(&mut bytes) };
+        self.read_data(&mut bytes);
         u16::from_le_bytes(bytes)
     }
 
     #[inline(always)]
     fn read_u32(&mut self) -> u32 {
         let mut bytes = [0u8; mem::size_of::<u32>()];
-        unsafe { self.read_data(&mut bytes) };
+        self.read_data(&mut bytes);
         u32::from_le_bytes(bytes)
     }
 
     #[inline(always)]
     fn read_u64(&mut self) -> u64 {
         let mut bytes = [0u8; mem::size_of::<u64>()];
-        unsafe { self.read_data(&mut bytes) };
+        self.read_data(&mut bytes);
         u64::from_le_bytes(bytes)
     }
 
@@ -35,19 +35,16 @@ pub trait ReadData {
     #[inline(always)]
     fn read_usize(&mut self) -> usize {
         let mut bytes = [0u8; mem::size_of::<usize>()];
-        unsafe { self.read_data(&mut bytes) };
+        self.read_data(&mut bytes);
         usize::from_le_bytes(bytes)
     }
 
-    /// # Safety
-    ///
-    /// * `dst.len() <= WIDE`
-    unsafe fn read_data(&mut self, dst: &mut [u8]);
+    fn read_data(&mut self, dst: &mut [u8]);
 }
 
 impl ReadData for &[u8] {
     #[inline(always)]
-    unsafe fn read_data(&mut self, dst: &mut [u8]) {
+    fn read_data(&mut self, dst: &mut [u8]) {
         let len = dst.len();
         let split = self.split_at(len);
         dst.copy_from_slice(split.0);
@@ -84,7 +81,7 @@ impl<T: ReadData + ?Sized> ReadData for &mut T {
     }
 
     #[inline(always)]
-    unsafe fn read_data(&mut self, dst: &mut [u8]) {
+    fn read_data(&mut self, dst: &mut [u8]) {
         (**self).read_data(dst)
     }
 }

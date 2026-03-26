@@ -45,14 +45,14 @@ impl<'a, I, T: RingBlock> RingReader<'a, I, T> {
 
 impl<'a, I, T: RingSize> PeekData for RingReader<'a, I, T> {
     #[inline(always)]
-    unsafe fn peek_data(&self, dst: &mut [u8]) {
+    fn peek_data(&self, dst: &mut [u8]) {
         debug_assert!(dst.len() <= WIDE);
         debug_assert!(self.head <= self.tail);
         let index = self.head % T::RING_SIZE as usize;
         let len = dst.len();
-        let src = self.ring.as_ptr().add(index);
-        let dst = dst.as_mut_ptr();
-        ptr::copy_nonoverlapping(src, dst, len);
+        let src = unsafe { self.ring.as_ptr().add(index) };
+        let dst_ptr = dst.as_mut_ptr();
+        unsafe { ptr::copy_nonoverlapping(src, dst_ptr, len) };
     }
 }
 
@@ -108,7 +108,7 @@ impl<'a, I, T> Pos for RingReader<'a, I, T> {
 
 impl<'a, I, T> Skip for RingReader<'a, I, T> {
     #[inline(always)]
-    unsafe fn skip_unchecked(&mut self, len: usize) {
+    fn skip_unchecked(&mut self, len: usize) {
         debug_assert!(len <= self.len());
         self.head += len as u32;
     }

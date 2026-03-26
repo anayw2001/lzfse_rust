@@ -51,7 +51,7 @@ impl<'a, T> Pos for RingView<'a, T> {
 
 impl<'a, T: RingSize> Skip for RingView<'a, T> {
     #[inline(always)]
-    unsafe fn skip_unchecked(&mut self, len: usize) {
+    fn skip_unchecked(&mut self, len: usize) {
         debug_assert!(len <= self.len());
         self.head += len as u32;
     }
@@ -102,20 +102,20 @@ impl<'a, T: Copy + RingType> CopyLong for RingView<'a, T> {
 
 impl<'a, T: RingSize> PeekData for RingView<'a, T> {
     #[inline(always)]
-    unsafe fn peek_data(&self, dst: &mut [u8]) {
+    fn peek_data(&self, dst: &mut [u8]) {
         debug_assert!(dst.len() <= WIDE);
         debug_assert!(self.head <= self.tail);
         let index = self.head % T::RING_SIZE as usize;
         let len = dst.len();
-        let src = self.ring_ptr.add(index);
-        let dst = dst.as_mut_ptr();
-        ptr::copy_nonoverlapping(src, dst, len);
+        let src = unsafe { self.ring_ptr.add(index) };
+        let dst_ptr = dst.as_mut_ptr();
+        unsafe { ptr::copy_nonoverlapping(src, dst_ptr, len) };
     }
 }
 
 impl<'a, T: RingSize> ReadData for RingView<'a, T> {
     #[inline(always)]
-    unsafe fn read_data(&mut self, dst: &mut [u8]) {
+    fn read_data(&mut self, dst: &mut [u8]) {
         debug_assert!(dst.len() <= WIDE);
         debug_assert!(self.head <= self.tail);
         self.peek_data(dst);
@@ -123,7 +123,7 @@ impl<'a, T: RingSize> ReadData for RingView<'a, T> {
     }
 }
 
-unsafe impl<'a, T: Copy + RingType> ShortLimit for RingView<'a, T> {
+impl<'a, T: Copy + RingType> ShortLimit for RingView<'a, T> {
     const SHORT_LIMIT: u32 = T::RING_LIMIT;
 }
 

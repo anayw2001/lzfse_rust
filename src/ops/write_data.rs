@@ -7,45 +7,42 @@ pub trait WriteData {
     #[allow(dead_code)]
     #[inline(always)]
     fn write_u8(&mut self, v: u8) {
-        unsafe { self.write_data(&v.to_le_bytes()) };
+        self.write_data(&v.to_le_bytes());
     }
 
     #[inline(always)]
     fn write_u16(&mut self, v: u16) {
-        unsafe { self.write_data(&v.to_le_bytes()) };
+        self.write_data(&v.to_le_bytes());
     }
 
     #[inline(always)]
     fn write_u32(&mut self, v: u32) {
-        unsafe { self.write_data(&v.to_le_bytes()) };
+        self.write_data(&v.to_le_bytes());
     }
 
     #[inline(always)]
     fn write_u64(&mut self, v: u64) {
-        unsafe { self.write_data(&v.to_le_bytes()) };
+        self.write_data(&v.to_le_bytes());
     }
 
     #[allow(dead_code)]
     #[inline(always)]
     fn write_u128(&mut self, v: u128) {
-        unsafe { self.write_data(&v.to_le_bytes()) };
+        self.write_data(&v.to_le_bytes());
     }
 
     #[allow(dead_code)]
     #[inline(always)]
     fn write_usize(&mut self, v: usize) {
-        unsafe { self.write_data(&v.to_le_bytes()) };
+        self.write_data(&v.to_le_bytes());
     }
 
-    /// # Safety
-    ///
-    /// * `src.len() <= WIDE`
-    unsafe fn write_data(&mut self, src: &[u8]);
+    fn write_data(&mut self, src: &[u8]);
 }
 
 impl WriteData for &mut [u8] {
     #[inline(always)]
-    unsafe fn write_data(&mut self, src: &[u8]) {
+    fn write_data(&mut self, src: &[u8]) {
         // Overflows panic.
         debug_assert!(src.len() <= WIDE);
         let len = src.len();
@@ -91,7 +88,7 @@ impl<T: WriteData + ?Sized> WriteData for &mut T {
     }
 
     #[inline(always)]
-    unsafe fn write_data(&mut self, src: &[u8]) {
+    fn write_data(&mut self, src: &[u8]) {
         (**self).write_data(src)
     }
 }
