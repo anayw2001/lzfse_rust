@@ -30,7 +30,7 @@ pub trait BitSrc: Len {
     fn base(&self) -> Idx;
 }
 
-impl<'a> BitSrc for &'a [u8] {
+impl BitSrc for &[u8] {
     #[inline(always)]
     unsafe fn read_bytes(&self, idx: Idx) -> usize {
         let index = isize::from(idx);

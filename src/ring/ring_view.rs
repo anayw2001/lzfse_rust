@@ -29,7 +29,7 @@ impl<'a, T: RingType> RingView<'a, T> {
             ring_ptr: ring.full_ptr(),
             head,
             tail,
-            _phantom: (PhantomData::default(), PhantomData::default()),
+            _phantom: (PhantomData, PhantomData),
         }
     }
 }

@@ -6,7 +6,9 @@ mod ring_decoder;
 mod take;
 
 pub use decoder::LzfseDecoder;
+#[allow(unused_imports)]
 pub use probe::probe;
+#[allow(unused_imports)]
 pub use reader_core::ReaderCore;
 pub use ring_decoder::{LzfseReader, LzfseReaderBytes, LzfseRingDecoder};
 pub use take::Take;

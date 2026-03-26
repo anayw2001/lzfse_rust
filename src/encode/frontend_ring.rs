@@ -155,7 +155,7 @@ impl<'a, T: Copy + RingBlock> FrontendRing<'a, T> {
         debug_assert!(self.validate_global());
         debug_assert_eq!(self.tail % T::RING_BLK_SIZE, 0);
         let index = self.tail % T::RING_SIZE as usize;
-        let mut dst = &mut self.ring[index..index + T::RING_BLK_SIZE as usize];
+        let dst = &mut self.ring[index..index + T::RING_BLK_SIZE as usize];
 
         let len = src.read_fully(dst)?;
         self.tail += len as u32;
@@ -205,7 +205,6 @@ impl<'a, T: Copy + RingBlock> FrontendRing<'a, T> {
         self.n_raw_bytes += len as u64;
         *src = &src[len..];
     }
-
 
     // #[inline(always)]
     fn match_block<B, O>(&mut self, backend: &mut B, dst: &mut O) -> io::Result<()>
@@ -905,8 +904,7 @@ mod tests {
             frontend.idx = Idx::Q0;
             frontend.head = Idx::Q0;
             frontend.tail = Idx::Q0 + n;
-            frontend.mark =
-                Idx::Q0 + ((n + T::RING_BLK_SIZE - 1) / T::RING_BLK_SIZE) * T::RING_BLK_SIZE;
+            frontend.mark = Idx::Q0 + n.div_ceil(T::RING_BLK_SIZE) * T::RING_BLK_SIZE;
             frontend.match_short(&mut backend, &mut dst)?;
             if frontend.pending.match_len != 0 {
                 unsafe { frontend.push_match(&mut backend, &mut dst, frontend.pending)? };
@@ -976,8 +974,7 @@ mod tests {
             frontend.idx = Idx::Q0;
             frontend.head = Idx::Q0;
             frontend.tail = Idx::Q0 + n;
-            frontend.mark =
-                Idx::Q0 + ((n + T::RING_BLK_SIZE - 1) / T::RING_BLK_SIZE) * T::RING_BLK_SIZE;
+            frontend.mark = Idx::Q0 + n.div_ceil(T::RING_BLK_SIZE) * T::RING_BLK_SIZE;
             frontend.match_short(&mut backend, &mut dst)?;
             if frontend.pending.match_len != 0 {
                 unsafe { frontend.push_match(&mut backend, &mut dst, frontend.pending)? };

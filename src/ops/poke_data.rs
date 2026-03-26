@@ -2,26 +2,31 @@ use crate::kit::WIDE;
 
 /// Poke unsigned integers as little endian bytes truncated to remaining buffer bytes.
 pub trait PokeData {
+    #[allow(dead_code)]
     #[inline(always)]
     fn poke_u8(&mut self, v: u8) {
         unsafe { self.poke_data(v.to_le_bytes().as_ref()) };
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn poke_u16(&mut self, v: u16) {
         unsafe { self.poke_data(v.to_le_bytes().as_ref()) };
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn poke_u32(&mut self, v: u32) {
         unsafe { self.poke_data(v.to_le_bytes().as_ref()) };
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn poke_u64(&mut self, v: u64) {
         unsafe { self.poke_data(v.to_le_bytes().as_ref()) };
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn poke_usize(&mut self, v: usize) {
         unsafe { self.poke_data(v.to_le_bytes().as_ref()) };
@@ -48,26 +53,31 @@ impl PokeData for [u8] {
 }
 
 impl<T: PokeData + ?Sized> PokeData for &mut T {
+    #[allow(dead_code)]
     #[inline(always)]
     fn poke_u8(&mut self, v: u8) {
         (**self).poke_u8(v)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn poke_u16(&mut self, v: u16) {
         (**self).poke_u16(v)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn poke_u32(&mut self, v: u32) {
         (**self).poke_u32(v)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn poke_u64(&mut self, v: u64) {
         (**self).poke_u64(v)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn poke_usize(&mut self, v: usize) {
         (**self).poke_usize(v)

@@ -4,6 +4,7 @@ use std::mem;
 
 /// Write unsigned integers as little endian bytes. Buffer overflow behaviour undefined.
 pub trait WriteData {
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_u8(&mut self, v: u8) {
         unsafe { self.write_data(&v.to_le_bytes()) };
@@ -24,11 +25,13 @@ pub trait WriteData {
         unsafe { self.write_data(&v.to_le_bytes()) };
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_u128(&mut self, v: u128) {
         unsafe { self.write_data(&v.to_le_bytes()) };
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_usize(&mut self, v: usize) {
         unsafe { self.write_data(&v.to_le_bytes()) };
@@ -53,11 +56,13 @@ impl WriteData for &mut [u8] {
 }
 
 impl<T: WriteData + ?Sized> WriteData for &mut T {
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_u8(&mut self, v: u8) {
         (**self).write_u8(v)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_u16(&mut self, v: u16) {
         (**self).write_u16(v)
@@ -73,11 +78,13 @@ impl<T: WriteData + ?Sized> WriteData for &mut T {
         (**self).write_u64(v)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_u128(&mut self, v: u128) {
         (**self).write_u128(v)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_usize(&mut self, v: usize) {
         (**self).write_usize(v)

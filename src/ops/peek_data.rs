@@ -4,6 +4,7 @@ use std::mem;
 
 /// Peek unsigned integers from little endian bytes with buffer overflow bytes undefined.
 pub trait PeekData {
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_u8(&self) -> u8 {
         let mut bytes = [0u8; mem::size_of::<u8>()];
@@ -11,6 +12,7 @@ pub trait PeekData {
         u8::from_le_bytes(bytes)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_u16(&self) -> u16 {
         let mut bytes = [0u8; mem::size_of::<u16>()];
@@ -25,6 +27,7 @@ pub trait PeekData {
         u32::from_le_bytes(bytes)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_u64(&self) -> u64 {
         let mut bytes = [0u8; mem::size_of::<u64>()];
@@ -32,6 +35,7 @@ pub trait PeekData {
         u64::from_le_bytes(bytes)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_usize(&self) -> usize {
         let mut bytes = [0u8; mem::size_of::<usize>()];
@@ -60,11 +64,13 @@ impl PeekData for [u8] {
 }
 
 impl<T: PeekData + ?Sized> PeekData for &T {
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_u8(&self) -> u8 {
         (**self).peek_u8()
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_u16(&self) -> u16 {
         (**self).peek_u16()
@@ -75,11 +81,13 @@ impl<T: PeekData + ?Sized> PeekData for &T {
         (**self).peek_u32()
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_u64(&self) -> u64 {
         (**self).peek_u64()
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_usize(&self) -> usize {
         (**self).peek_usize()
@@ -92,11 +100,13 @@ impl<T: PeekData + ?Sized> PeekData for &T {
 }
 
 impl<T: PeekData + ?Sized> PeekData for &mut T {
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_u8(&self) -> u8 {
         (**self).peek_u8()
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_u16(&self) -> u16 {
         (**self).peek_u16()
@@ -107,11 +117,13 @@ impl<T: PeekData + ?Sized> PeekData for &mut T {
         (**self).peek_u32()
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_u64(&self) -> u64 {
         (**self).peek_u64()
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn peek_usize(&self) -> usize {
         (**self).peek_usize()

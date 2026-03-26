@@ -214,7 +214,7 @@ impl<'a, T: RingType> Ring<'a, T> {
     }
 
     #[inline(always)]
-    pub fn view(&self, head: Idx, tail: Idx) -> RingView<T> {
+    pub fn view(&self, head: Idx, tail: Idx) -> RingView<'_, T> {
         RingView::new(self, head, tail)
     }
 }
@@ -254,8 +254,8 @@ impl<'a, T: RingType> From<&'a mut RingBox<T>> for Ring<'a, T> {
     fn from(ring_box: &'a mut RingBox<T>) -> Self {
         Self(
             unsafe { ring_box.0.as_mut_ptr().add(T::RING_LIMIT as usize) },
-            PhantomData::default(),
-            PhantomData::default(),
+            PhantomData,
+            PhantomData,
         )
     }
 }

@@ -17,7 +17,7 @@ pub trait Skip: Len {
     unsafe fn skip_unchecked(&mut self, len: usize);
 }
 
-impl<'a> Skip for &'a [u8] {
+impl Skip for &[u8] {
     #[inline(always)]
     unsafe fn skip_unchecked(&mut self, len: usize) {
         debug_assert!(len <= self.len());
@@ -25,14 +25,13 @@ impl<'a> Skip for &'a [u8] {
     }
 }
 
-impl<'a> Skip for &'a mut [u8] {
+impl Skip for &mut [u8] {
     #[inline(always)]
     unsafe fn skip_unchecked(&mut self, len: usize) {
         debug_assert!(len <= self.len());
         *self = &mut mem::take(self)[len..];
     }
 }
-
 
 impl<T: Skip + ?Sized> Skip for &mut T {
     #[inline(always)]

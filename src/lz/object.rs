@@ -50,7 +50,7 @@ pub unsafe fn write_match_8(src: *const u8, dst: *mut u8, dst_end: *mut u8, dist
 /// `len = dst_end.sub(dst)`
 /// `distance = dst.sub(src)`
 ///
-
+/// # Safety
 ///
 /// * `src` is valid for `len + WIDE` byte reads.
 /// * `dst` is valid for `len + WIDE` byte writes.
@@ -78,7 +78,7 @@ pub unsafe fn write_match_x(src: *const u8, dst: *mut u8, dst_end: *mut u8, dist
 /// `len = dst_end.sub(dst)`
 /// `distance = dst.sub(src)`
 ///
-
+/// # Safety
 ///
 /// * `src` is valid for `len + WIDE` byte reads.
 /// * `dst` is valid for `len + WIDE` byte writes.

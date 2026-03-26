@@ -72,7 +72,6 @@ impl Backend for FseBackend {
         self.push_match(dst, literals, 0, MatchDistance::new(1))
     }
 
-
     #[inline(always)]
     fn push_match<I: ShortBuffer, O: ShortWriter>(
         &mut self,

@@ -29,6 +29,7 @@ impl<'a> WideBytesMut<'a> {
         Self(slice::from_raw_parts_mut(ptr, len))
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
         self.0.as_mut_ptr()

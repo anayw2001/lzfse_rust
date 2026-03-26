@@ -8,6 +8,7 @@ use super::skip::Skip;
 use std::ptr;
 
 pub trait CopyShort: Len + ShortLimit + Skip {
+    #[allow(dead_code)]
     #[inline(always)]
     fn read_short<V: CopyType>(&mut self, dst: WideBytesMut) {
         assert!(dst.len() <= Self::SHORT_LIMIT as usize);
@@ -15,6 +16,7 @@ pub trait CopyShort: Len + ShortLimit + Skip {
         unsafe { self.read_short_unchecked::<V>(dst) };
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     unsafe fn read_short_unchecked<V: CopyType>(&mut self, mut dst: WideBytesMut) {
         self.read_short_raw::<V>(dst.as_mut_ptr(), dst.len());
@@ -31,12 +33,14 @@ pub trait CopyShort: Len + ShortLimit + Skip {
         self.skip_unchecked(short_len);
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn copy_short<V: CopyType>(&self, dst: WideBytesMut) {
         assert!(dst.len() <= self.len());
         unsafe { self.copy_short_unchecked::<V>(dst) };
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     unsafe fn copy_short_unchecked<V: CopyType>(&self, mut dst: WideBytesMut) {
         self.copy_short_raw::<V>(dst.as_mut_ptr(), dst.len())
@@ -51,11 +55,13 @@ pub trait CopyShort: Len + ShortLimit + Skip {
 }
 
 impl<T: CopyShort + ?Sized> CopyShort for &mut T {
+    #[allow(dead_code)]
     #[inline(always)]
     fn read_short<V: CopyType>(&mut self, dst: WideBytesMut) {
         (**self).read_short::<V>(dst)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     unsafe fn read_short_unchecked<V: CopyType>(&mut self, dst: WideBytesMut) {
         (**self).read_short_unchecked::<V>(dst)
@@ -66,11 +72,13 @@ impl<T: CopyShort + ?Sized> CopyShort for &mut T {
         (**self).read_short_raw::<V>(dst, short_len)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn copy_short<V: CopyType>(&self, dst: WideBytesMut) {
         (**self).copy_short::<V>(dst)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     unsafe fn copy_short_unchecked<V: CopyType>(&self, dst: WideBytesMut) {
         (**self).copy_short_unchecked::<V>(dst)

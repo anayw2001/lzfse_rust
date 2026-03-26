@@ -11,6 +11,7 @@ pub trait PatchInto: Pos {
     #[must_use]
     fn patch_into(&mut self, pos: Idx, len: usize) -> &mut [u8];
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn patch_bytes(&mut self, pos: Idx, bytes: &[u8]) {
         self.patch_into(pos, bytes.len()).copy_from_slice(bytes);

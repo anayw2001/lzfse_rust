@@ -11,7 +11,13 @@ use std::slice;
 /// over the entire required memory range (including slack). This avoids Miri errors
 /// when `wide_copy` reads beyond the nominal length of the data.
 #[derive(Copy, Clone)]
-pub struct ShortBytes<'a, T, W>(*const u8, usize, PhantomData<T>, PhantomData<W>, PhantomData<&'a ()>);
+pub struct ShortBytes<'a, T, W>(
+    *const u8,
+    usize,
+    PhantomData<T>,
+    PhantomData<W>,
+    PhantomData<&'a ()>,
+);
 
 impl<'a, T: ShortLimit, W: Width> ShortBytes<'a, T, W> {
     #[allow(dead_code)]
@@ -35,7 +41,7 @@ impl<'a, T: ShortLimit, W: Width> ShortBytes<'a, T, W> {
     #[inline(always)]
     pub unsafe fn from_raw_parts(ptr: *const u8, len: usize) -> Self {
         debug_assert!(len <= T::SHORT_LIMIT as usize);
-        Self(ptr, len, PhantomData::default(), PhantomData::default(), PhantomData::default())
+        Self(ptr, len, PhantomData, PhantomData, PhantomData)
     }
 }
 

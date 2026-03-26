@@ -16,4 +16,5 @@ pub use ring_reader::RingReader;
 pub use ring_short_writer::RingShortWriter;
 pub use ring_size::RingSize;
 pub use ring_type::RingType;
+#[allow(unused_imports)]
 pub use ring_view::RingView;

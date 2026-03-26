@@ -12,6 +12,6 @@ impl<T: RingType> Default for RingBox<T> {
         assert!(T::RING_SIZE <= 0x4000_0000);
         assert!(T::RING_SIZE.is_power_of_two());
         assert!(T::RING_LIMIT <= T::RING_SIZE);
-        Self(vec![0u8; T::RING_CAPACITY as usize].into_boxed_slice(), PhantomData::default())
+        Self(vec![0u8; T::RING_CAPACITY as usize].into_boxed_slice(), PhantomData)
     }
 }

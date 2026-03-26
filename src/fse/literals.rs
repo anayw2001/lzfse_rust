@@ -11,7 +11,6 @@ use super::error_kind::FseErrorKind;
 use super::Fse;
 
 use std::io;
-use std::usize;
 
 const BUF_LEN: usize = LITERALS_PER_BLOCK as usize + MAX_L_VALUE as usize + WIDE;
 
@@ -96,8 +95,8 @@ impl Literals {
     {
         debug_assert!(self.1 <= LITERALS_PER_BLOCK as usize);
         let mark = dst.pos();
-        let n_literals = (self.1 + 3) / 4 * 4;
-        let n_bytes = (n_literals * MAX_U_BITS as usize + 7) / 8;
+        let n_literals = self.1.div_ceil(4) * 4;
+        let n_bytes = (n_literals * MAX_U_BITS as usize).div_ceil(8);
         let mut writer = BitWriter::new(dst, n_bytes)?;
         let mut state = (
             encoder::U::default(),
@@ -128,7 +127,7 @@ impl Literals {
         ];
         let bits = writer.finalize()? as u32;
         let n_payload_bytes = (dst.pos() - mark) as u32;
-        let n_literals = (self.1 as u32 + 3) / 4 * 4;
+        let n_literals = (self.1 as u32).div_ceil(4) * 4;
         Ok(LiteralParam::new(n_literals, n_payload_bytes, bits, state).expect("internal error"))
     }
 

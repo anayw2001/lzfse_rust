@@ -16,12 +16,12 @@ pub fn n_raw_bytes_limit(n_literals: u32, n_lmds: u32) -> u32 {
 
 /// Naive maximum `n_payload_bytes` given the supplied parameters with leeway.
 fn lmd_n_payload_bytes_limit(num: u32) -> u32 {
-    1024 + 8 + (num * MAX_L_BITS + num * MAX_M_BITS + num * MAX_D_BITS + 7) / 8
+    1024 + 8 + (num * MAX_L_BITS + num * MAX_M_BITS + num * MAX_D_BITS).div_ceil(8)
 }
 
 /// Naive maximum `n_payload_bytes` given the supplied parameters with leeway.
 pub fn literal_n_payload_bytes_limit(num: u32) -> u32 {
-    1024 + (num * MAX_U_BITS + 7) / 8
+    1024 + (num * MAX_U_BITS).div_ceil(8)
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
@@ -322,7 +322,7 @@ impl LiteralParam {
     }
 
     fn validate(&self) -> crate::Result<()> {
-        if self.num % 4 != 0
+        if !self.num.is_multiple_of(4)
             || self.num > LITERALS_PER_BLOCK
             || self.n_payload_bytes > literal_n_payload_bytes_limit(self.num)
         {

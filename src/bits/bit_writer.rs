@@ -47,7 +47,7 @@ impl<'a, T: BitDst> BitWriter<'a, T> {
     pub fn finalize(mut self) -> io::Result<usize> {
         assert!(0 <= self.accum_bits);
         assert!(self.accum_bits <= ACCUM_MAX);
-        let n_bytes = (self.accum_bits as usize + 7) / 8;
+        let n_bytes = (self.accum_bits as usize).div_ceil(8);
         unsafe { self.inner.push_bytes_unchecked(self.accum_data, n_bytes) };
         self.accum_bits -= n_bytes as isize * 8;
         debug_assert!(-7 <= self.accum_bits);

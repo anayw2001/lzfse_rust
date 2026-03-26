@@ -56,11 +56,11 @@ pub const V2_HEADER_SIZE: u32 = 0x20;
 
 pub const N_WEIGHTS: usize = U_TOP;
 pub const V1_WEIGHT_PAYLOAD_BYTES: u32 = N_WEIGHTS as u32 * mem::size_of::<u16>() as u32 + 2;
-pub const V2_WEIGHT_PAYLOAD_BYTES_MAX: u32 = (N_WEIGHTS as u32 * MAX_W_BITS as u32 + 7) / 8;
+pub const V2_WEIGHT_PAYLOAD_BYTES_MAX: u32 = (N_WEIGHTS as u32 * MAX_W_BITS as u32).div_ceil(8);
 
 pub const MAX_LMD_BITS: u32 = MAX_L_BITS + MAX_M_BITS + MAX_D_BITS;
-pub const MAX_LMD_PAYLOAD: u32 = (MAX_LMD_BITS * LMDS_PER_BLOCK + 7) / 8 + 8;
-pub const MAX_LITERAL_PAYLOAD: u32 = (MAX_U_BITS * LITERALS_PER_BLOCK + 7) / 8;
+pub const MAX_LMD_PAYLOAD: u32 = (MAX_LMD_BITS * LMDS_PER_BLOCK).div_ceil(8) + 8;
+pub const MAX_LITERAL_PAYLOAD: u32 = (MAX_U_BITS * LITERALS_PER_BLOCK).div_ceil(8);
 
 pub const V1_MAX_BLOCK_LEN: u32 =
     V1_HEADER_SIZE + V1_WEIGHT_PAYLOAD_BYTES + MAX_LITERAL_PAYLOAD + MAX_LMD_PAYLOAD;

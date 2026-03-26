@@ -21,6 +21,7 @@ mod test_fse;
 pub use backend::FseBackend;
 pub use buffer::Buffer;
 pub use constants::{V1_MAX_BLOCK_LEN, V2_MAX_BLOCK_LEN};
+#[allow(unused_imports)]
 pub use decoder::Decoder;
 pub use encoder::Encoder;
 pub use error_kind::FseErrorKind;

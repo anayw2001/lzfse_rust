@@ -8,6 +8,7 @@ use std::ptr;
 ///
 /// Memory must be allocated in advance via `Allocate`.
 pub trait BitDst: Allocate + Pos {
+    #[allow(dead_code)]
     fn push_bytes(&mut self, bytes: usize, n_bytes: usize) {
         assert!(n_bytes <= mem::size_of::<usize>());
         unsafe { self.push_bytes_unchecked(bytes, n_bytes) }

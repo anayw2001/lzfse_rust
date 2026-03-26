@@ -1,7 +1,5 @@
 /// # Safety
 ///
-
-///
 /// * `0 < MATCH_UNIT`
 /// * `MATCH_UNIT <=4`
 pub unsafe trait MatchUnit {

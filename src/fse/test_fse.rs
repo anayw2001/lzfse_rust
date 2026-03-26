@@ -37,7 +37,7 @@ impl Buddy {
         encoder::build_e_table(&self.weights, N_STATES, &mut self.encode_table);
         self.enc.clear();
         self.enc.resize(8, 0);
-        let allocate = (self.bytes.len() * MAX_BITS + 7) / 8;
+        let allocate = (self.bytes.len() * MAX_BITS).div_ceil(8);
         let mut wtr = BitWriter::new(&mut self.enc, allocate)?;
         let mut state = N_STATES;
         for b in self.bytes.iter().rev() {

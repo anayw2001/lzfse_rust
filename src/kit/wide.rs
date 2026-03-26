@@ -33,6 +33,7 @@ unsafe impl Width for W16 {
     const WIDTH: usize = 16;
 }
 
+#[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
 pub struct Wide;
 

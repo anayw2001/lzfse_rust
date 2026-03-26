@@ -27,6 +27,7 @@ impl CopyType for CopyTypeIndex {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
 pub struct CopyTypePtr;
 

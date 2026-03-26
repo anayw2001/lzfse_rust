@@ -154,6 +154,6 @@ impl<T: DMax> MatchDistanceUnpack<T> {
 impl<T: DMax> From<MatchDistance<T>> for MatchDistanceUnpack<T> {
     #[inline(always)]
     fn from(other: MatchDistance<T>) -> Self {
-        Self(other.get(), PhantomData::default())
+        Self(other.get(), PhantomData)
     }
 }

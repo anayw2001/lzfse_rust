@@ -73,7 +73,7 @@ impl LzfseRingDecoder {
     }
 
     /// Create a new [LzfseReader] decoder instance using the supplied `inner` reader.
-    pub fn reader<I: Read>(&mut self, inner: I) -> LzfseReader<I> {
+    pub fn reader<I: Read>(&mut self, inner: I) -> LzfseReader<'_, I> {
         let dst = RingLzWriter::new((&mut self.output).into(), io::sink());
         let src = RingReader::new((&mut self.input).into(), inner);
         LzfseReader(ReaderCore::new(dst, src, &mut self.core.fse_core))
@@ -83,7 +83,7 @@ impl LzfseRingDecoder {
     ///
     /// This method offers greater efficiency in comparison to [LzfseRingDecoder::reader]
     /// when operating over byte slices.
-    pub fn reader_bytes<'a>(&'a mut self, bytes: &'a [u8]) -> LzfseReaderBytes {
+    pub fn reader_bytes<'a>(&'a mut self, bytes: &'a [u8]) -> LzfseReaderBytes<'a> {
         let dst = RingLzWriter::new((&mut self.output).into(), io::sink());
         LzfseReaderBytes(ReaderCore::new(dst, bytes, &mut self.core.fse_core))
     }
@@ -131,7 +131,6 @@ impl fmt::Debug for LzfseRingDecoder {
 ///     Ok(())
 /// }
 /// ```
-
 pub struct LzfseReader<'a, I: Read>(ReaderCore<'a, RingReader<'a, I, Input>>);
 
 impl<'a, I: Read> LzfseReader<'a, I> {

@@ -11,8 +11,10 @@ mod vn_core;
 mod tests;
 
 pub use backend::VnBackend;
+#[allow(unused_imports)]
 pub use block::VnBlock;
 pub use error_kind::VnErrorKind;
 pub use object::Vn;
+#[allow(unused_imports)]
 pub use ops::{vn_decompress, vn_probe};
 pub use vn_core::VnCore;

@@ -3,7 +3,7 @@ use super::constants::*;
 #[allow(dead_code)]
 #[inline(always)]
 pub const fn weight_payload_limit(n_weights: usize) -> usize {
-    (n_weights * MAX_W_BITS + 7) / 8
+    (n_weights * MAX_W_BITS).div_ceil(8)
 }
 
 #[inline(always)]

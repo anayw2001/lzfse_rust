@@ -76,7 +76,7 @@ impl LzfseRingEncoder {
     ///
     /// **It is imperative that the writer is [finalized](LzfseWriterBytes::finalize) after use to
     /// complete the encoding process, [flushing](std::io::Write::flush) is not sufficient.**
-    pub fn writer<O: Write>(&mut self, inner: O) -> LzfseWriter<O> {
+    pub fn writer<O: Write>(&mut self, inner: O) -> LzfseWriter<'_, O> {
         let mut frontend = FrontendRing::new((&mut self.input).into(), &mut self.core.table);
         frontend.init();
         let writer = RingShortWriter::new((&mut self.output).into(), inner);
@@ -90,7 +90,7 @@ impl LzfseRingEncoder {
     ///
     /// **It is imperative that the writer is [finalized](LzfseWriterBytes::finalize) after use to
     /// complete the encoding process, [flushing](std::io::Write::flush) is not sufficient.**
-    pub fn writer_bytes(&mut self, vec: Vec<u8>) -> LzfseWriterBytes {
+    pub fn writer_bytes(&mut self, vec: Vec<u8>) -> LzfseWriterBytes<'_> {
         let mut frontend = FrontendRing::new((&mut self.input).into(), &mut self.core.table);
         frontend.init();
         LzfseWriterBytes::new(frontend, &mut self.core.backend, vec)

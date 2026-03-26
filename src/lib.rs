@@ -132,6 +132,7 @@ mod ring;
 mod types;
 mod vn;
 
+/// Internal test utilities.
 #[cfg(test)]
 pub mod test_utils;
 

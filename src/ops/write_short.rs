@@ -11,12 +11,14 @@ use std::slice;
 /// Low-level write buffer access methods.
 pub trait WriteShort: Allocate + ShortLimit {
     // Little endian.
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_short_u8(&mut self, u: u8) -> io::Result<()> {
         self.write_short_bytes(&u.to_le_bytes())
     }
 
     // Little endian.
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_short_u16(&mut self, u: u16) -> io::Result<()> {
         self.write_short_bytes(&u.to_le_bytes())
@@ -35,12 +37,14 @@ pub trait WriteShort: Allocate + ShortLimit {
     }
 
     // Little endian.
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_short_u128(&mut self, u: u128) -> io::Result<()> {
         self.write_short_bytes(&u.to_le_bytes())
     }
 
     // Little endian.
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_short_usize(&mut self, u: usize) -> io::Result<()> {
         self.write_short_bytes(&u.to_le_bytes())
@@ -79,8 +83,9 @@ pub trait WriteShort: Allocate + ShortLimit {
         Ok(slice::from_raw_parts_mut(ptr, len as usize))
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
-    fn short_wide_block(&mut self, len: u32) -> io::Result<WideBytesMut> {
+    fn short_wide_block(&mut self, len: u32) -> io::Result<WideBytesMut<'_>> {
         assert!(len <= Self::SHORT_LIMIT);
         unsafe { self.short_wide_block_unchecked(len) }
     }
@@ -91,8 +96,9 @@ pub trait WriteShort: Allocate + ShortLimit {
     /// # Assert
     ///
     /// * `len <= Self::SHORT_LIMIT`
+    #[allow(dead_code)]
     #[inline(always)]
-    unsafe fn short_wide_block_unchecked(&mut self, len: u32) -> io::Result<WideBytesMut> {
+    unsafe fn short_wide_block_unchecked(&mut self, len: u32) -> io::Result<WideBytesMut<'_>> {
         debug_assert!(len <= Self::SHORT_LIMIT);
         let ptr = self.short_ptr();
         self.allocate(len as usize + WIDE)?;
@@ -112,11 +118,13 @@ pub trait WriteShort: Allocate + ShortLimit {
 }
 
 impl<T: WriteShort + ?Sized> WriteShort for &mut T {
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_short_u8(&mut self, u: u8) -> io::Result<()> {
         (**self).write_short_u8(u)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_short_u16(&mut self, u: u16) -> io::Result<()> {
         (**self).write_short_u16(u)
@@ -132,11 +140,13 @@ impl<T: WriteShort + ?Sized> WriteShort for &mut T {
         (**self).write_short_u64(u)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_short_u128(&mut self, u: u128) -> io::Result<()> {
         (**self).write_short_u128(u)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn write_short_usize(&mut self, u: usize) -> io::Result<()> {
         (**self).write_short_usize(u)
@@ -157,13 +167,15 @@ impl<T: WriteShort + ?Sized> WriteShort for &mut T {
         (**self).short_block_unchecked(len)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
-    fn short_wide_block(&mut self, len: u32) -> io::Result<WideBytesMut> {
+    fn short_wide_block(&mut self, len: u32) -> io::Result<WideBytesMut<'_>> {
         (**self).short_wide_block(len)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
-    unsafe fn short_wide_block_unchecked(&mut self, len: u32) -> io::Result<WideBytesMut> {
+    unsafe fn short_wide_block_unchecked(&mut self, len: u32) -> io::Result<WideBytesMut<'_>> {
         (**self).short_wide_block_unchecked(len)
     }
 

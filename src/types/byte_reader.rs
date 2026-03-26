@@ -22,10 +22,11 @@ pub trait ByteReader<'a>: Len + PeekData + Skip {
     /// still contain residual data.
     fn is_eof(&self) -> bool;
 
+    #[allow(dead_code)]
     fn is_full(&self) -> bool;
 }
 
-impl<'a, 'b> ByteReader<'a> for &'b [u8] {
+impl<'a> ByteReader<'a> for &[u8] {
     const VIEW_LIMIT: usize = usize::MAX;
 
     type View = &'a [u8];
@@ -45,6 +46,7 @@ impl<'a, 'b> ByteReader<'a> for &'b [u8] {
         true
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn is_full(&self) -> bool {
         true

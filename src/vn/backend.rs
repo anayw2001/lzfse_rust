@@ -74,7 +74,7 @@ impl Backend for VnBackend {
     }
 
     #[inline(always)]
-    fn push_match<I: ShortBuffer, O: ShortWriter>(
+    fn push_match<I, O: ShortWriter>(
         &mut self,
         dst: &mut O,
         mut literals: I,

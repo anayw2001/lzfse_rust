@@ -42,7 +42,7 @@ impl Buddy {
         let mut hasher = Sha256::default();
         hasher.update(&self.data);
         // Validate
-        assert_eq!(hasher.finalize().as_slice(), hash);
+        assert_eq!(&hasher.finalize()[..], hash);
         Ok(())
     }
 

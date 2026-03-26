@@ -2,6 +2,7 @@ use std::mem;
 
 /// Read unsigned integers from little endian bytes. Buffer overflows panic.
 pub trait ReadData {
+    #[allow(dead_code)]
     #[inline(always)]
     fn read_u8(&mut self) -> u8 {
         let mut bytes = [0u8; mem::size_of::<u8>()];
@@ -30,6 +31,7 @@ pub trait ReadData {
         u64::from_le_bytes(bytes)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn read_usize(&mut self) -> usize {
         let mut bytes = [0u8; mem::size_of::<usize>()];
@@ -54,6 +56,7 @@ impl ReadData for &[u8] {
 }
 
 impl<T: ReadData + ?Sized> ReadData for &mut T {
+    #[allow(dead_code)]
     #[inline(always)]
     fn read_u8(&mut self) -> u8 {
         (**self).read_u8()
@@ -74,6 +77,7 @@ impl<T: ReadData + ?Sized> ReadData for &mut T {
         (**self).read_u64()
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn read_usize(&mut self) -> usize {
         (**self).read_usize()

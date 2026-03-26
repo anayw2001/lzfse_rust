@@ -39,15 +39,14 @@ impl Weights {
         for LmdPack(literal_len, match_len, match_distance_zeroed) in lmds.iter() {
             // We trust the LmdPack<Fse> structure and omit bounds checking.
             let d_index = constants::d_index(match_distance_zeroed.get() as usize);
-            unsafe {
-                let l_base = L_BASE_FROM_VALUE[literal_len.get() as usize] as usize;
-                let m_base = M_BASE_FROM_VALUE[match_len.get() as usize] as usize;
-                let d_base = D_BASE_FROM_VALUE[d_index] as usize;
-                self.0[L_RANGE][l_base] += 1;
-                self.0[M_RANGE][m_base] += 1;
-                self.0[D_RANGE][d_base] += 1
-            }
+            let l_base = L_BASE_FROM_VALUE[literal_len.get() as usize] as usize;
+            let m_base = M_BASE_FROM_VALUE[match_len.get() as usize] as usize;
+            let d_base = D_BASE_FROM_VALUE[d_index] as usize;
+            self.0[L_RANGE][l_base] += 1;
+            self.0[M_RANGE][m_base] += 1;
+            self.0[D_RANGE][d_base] += 1;
         }
+
         normalize_m1(&mut self.0[L_RANGE], lmds.len() as u32, L_STATES);
         normalize_m1(&mut self.0[M_RANGE], lmds.len() as u32, M_STATES);
         normalize_m1(&mut self.0[D_RANGE], lmds.len() as u32, D_STATES);

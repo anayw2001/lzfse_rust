@@ -24,7 +24,6 @@ impl Lmds {
         self.1 += 1;
     }
 
-
     pub fn load<T>(&mut self, src: T, decoder: &Decoder, param: &LmdParam) -> crate::Result<()>
     where
         T: BitSrc,
@@ -68,11 +67,10 @@ impl Lmds {
         let mark = dst.pos();
         // 8 byte pad.
         dst.write_short_u64(0)?;
-        let n_bytes = (self.1 * MAX_LMD_BITS as usize + 7) / 8;
+        let n_bytes = (self.1 * MAX_LMD_BITS as usize).div_ceil(8);
         let mut writer = BitWriter::new(dst, n_bytes)?;
         let mut state = (encoder::L::default(), encoder::M::default(), encoder::D::default());
-        for &LmdPack(literal_len, match_len, match_distance_zeroed) in
-            self.0[..self.1].iter().rev()
+        for &LmdPack(literal_len, match_len, match_distance_zeroed) in self.0[..self.1].iter().rev()
         {
             // `flush` constraints:
             // 32 bit systems: flush after each L, M, D component pull.

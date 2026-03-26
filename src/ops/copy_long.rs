@@ -7,12 +7,14 @@ use std::ptr;
 
 /// Copy long: eager, high volume, higher latency.
 pub trait CopyLong: Len + Skip {
+    #[allow(dead_code)]
     #[inline(always)]
     fn read_long(&mut self, dst: WideBytesMut) {
         assert!(dst.len() <= self.len());
         unsafe { self.read_long_unchecked(dst) };
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     unsafe fn read_long_unchecked(&mut self, mut dst: WideBytesMut) {
         self.read_long_raw(dst.as_mut_ptr(), dst.len());
@@ -28,12 +30,14 @@ pub trait CopyLong: Len + Skip {
         self.skip_unchecked(len);
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn copy_long(&self, dst: WideBytesMut) {
         assert!(dst.len() <= self.len());
         unsafe { self.copy_long_unchecked(dst) };
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     unsafe fn copy_long_unchecked(&self, mut dst: WideBytesMut) {
         self.copy_long_raw(dst.as_mut_ptr(), dst.len())
@@ -47,11 +51,13 @@ pub trait CopyLong: Len + Skip {
 }
 
 impl<T: CopyLong + ?Sized> CopyLong for &mut T {
+    #[allow(dead_code)]
     #[inline(always)]
     fn read_long(&mut self, dst: WideBytesMut) {
         (**self).read_long(dst)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     unsafe fn read_long_unchecked(&mut self, dst: WideBytesMut) {
         (**self).read_long_unchecked(dst)
@@ -62,11 +68,13 @@ impl<T: CopyLong + ?Sized> CopyLong for &mut T {
         (**self).read_long_raw(dst, len)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     fn copy_long(&self, dst: WideBytesMut) {
         (**self).copy_long(dst)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
     unsafe fn copy_long_unchecked(&self, dst: WideBytesMut) {
         (**self).copy_long_unchecked(dst)
