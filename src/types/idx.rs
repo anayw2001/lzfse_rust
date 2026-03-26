@@ -191,7 +191,7 @@ impl Neg for Idx {
 
     #[inline(always)]
     fn neg(self) -> Self::Output {
-        Self(self.0.wrapping_sub(self.0))
+        Self(0u32.wrapping_sub(self.0))
     }
 }
 
