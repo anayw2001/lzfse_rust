@@ -132,7 +132,7 @@ impl<'a, O: Write, T: RingType> LzWriter for RingLzWriter<'a, O, T> {
         let len = len.get();
         let index = self.index as u32 % T::RING_SIZE;
         self.index += len as u64;
-        unsafe { self.ring.set_quad_index(index as usize, bytes) };
+        self.ring.set_quad_index(index as usize, bytes);
         if index + len >= T::RING_SIZE {
             // Unlikely.
             self.flush(4)?;

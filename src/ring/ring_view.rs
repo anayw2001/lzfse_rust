@@ -8,29 +8,28 @@ use super::ring_size::RingSize;
 use super::ring_type::RingType;
 
 use std::marker::PhantomData;
-use std::slice;
 use std::{mem, ptr};
 
 /// Immutable ring view.
 #[derive(Copy, Clone)]
 pub struct RingView<'a, T> {
-    pub(super) ring_ptr: *const u8,
+    pub(super) ring: &'a [u8],
     pub(super) head: Idx,
     pub(super) tail: Idx,
-    _phantom: (PhantomData<T>, PhantomData<&'a ()>),
+    _phantom: PhantomData<T>,
 }
 
 impl<'a, T: RingType> RingView<'a, T> {
     #[inline(always)]
     pub fn new(ring: &'a Ring<T>, head: Idx, tail: Idx) -> Self {
         debug_assert!((tail - head) as u32 <= T::RING_SIZE);
-        Self {
-            // We use the full pointer to maintain provenance over the entire ring buffer.
-            ring_ptr: ring.full_ptr(),
-            head,
-            tail,
-            _phantom: (PhantomData, PhantomData),
-        }
+        Self { ring: ring.nominal_slice(), head, tail, _phantom: PhantomData }
+    }
+
+    /// Returns a raw pointer to the start of the nominal data range.
+    #[inline(always)]
+    pub fn as_ptr(&self) -> *const u8 {
+        self.ring.as_ptr()
     }
 }
 
@@ -72,7 +71,7 @@ impl<'a, T: Copy + RingType> CopyShort for RingView<'a, T> {
         debug_assert!(short_len <= self.len());
         let index = self.head % T::RING_SIZE as usize;
         debug_assert!(index + short_len <= T::RING_SIZE as usize + T::RING_LIMIT as usize);
-        let src = self.ring_ptr.add(index);
+        let src = self.ring.as_ptr().add(index);
         V::wide_copy::<W00>(src, dst, short_len);
     }
 }
@@ -85,7 +84,7 @@ impl<'a, T: Copy + RingType> CopyLong for RingView<'a, T> {
         loop {
             let index = idx % T::RING_SIZE as usize;
             let limit = T::RING_SIZE as usize - index;
-            let src = self.ring_ptr.add(index);
+            let src = self.ring.as_ptr().add(index);
             if len < limit {
                 debug_assert!(index + len <= T::RING_SIZE as usize + T::RING_LIMIT as usize);
                 CopyTypeLong::wide_copy::<W00>(src, dst, len);
@@ -107,7 +106,7 @@ impl<'a, T: RingSize> PeekData for RingView<'a, T> {
         debug_assert!(self.head <= self.tail);
         let index = self.head % T::RING_SIZE as usize;
         let len = dst.len();
-        let src = unsafe { self.ring_ptr.add(index) };
+        let src = unsafe { self.ring.as_ptr().add(index) };
         let dst_ptr = dst.as_mut_ptr();
         unsafe { ptr::copy_nonoverlapping(src, dst_ptr, len) };
     }
@@ -132,8 +131,7 @@ impl<'a, T: Copy + RingType> ShortBuffer for RingView<'a, T> {
     fn short_bytes(&self) -> &[u8] {
         let len = self.len().min(T::RING_LIMIT as usize);
         let index = self.head % T::RING_SIZE as usize;
-        let src = unsafe { self.ring_ptr.add(index) };
-        unsafe { slice::from_raw_parts(src, len) }
+        &self.ring[index..index + len]
     }
 }
 
@@ -142,7 +140,7 @@ impl<'a, T: Copy + RingType> BitSrc for RingView<'a, T> {
     fn read_bytes(&self, idx: Idx) -> usize {
         assert!(mem::size_of::<usize>() <= WIDE);
         let index = usize::from(idx) % T::RING_SIZE as usize;
-        unsafe { self.ring_ptr.add(index).cast::<usize>().read_unaligned().to_le() }
+        unsafe { self.ring.as_ptr().add(index).cast::<usize>().read_unaligned().to_le() }
     }
 
     #[inline(always)]

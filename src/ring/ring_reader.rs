@@ -5,6 +5,7 @@ use crate::types::{ByteReader, Idx};
 use super::object::Ring;
 use super::ring_block::RingBlock;
 use super::ring_size::RingSize;
+use super::ring_type::RingType;
 use super::ring_view::RingView;
 
 use std::io::{self, Read};
@@ -43,7 +44,7 @@ impl<'a, I, T: RingBlock> RingReader<'a, I, T> {
     }
 }
 
-impl<'a, I, T: RingSize> PeekData for RingReader<'a, I, T> {
+impl<'a, I, T: RingType> PeekData for RingReader<'a, I, T> {
     #[inline(always)]
     fn peek_data(&self, dst: &mut [u8]) {
         debug_assert!(dst.len() <= WIDE);
