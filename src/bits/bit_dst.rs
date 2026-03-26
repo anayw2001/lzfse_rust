@@ -2,7 +2,6 @@ use crate::ops::{Allocate, Pos};
 
 use std::io;
 use std::mem;
-use std::ptr;
 
 /// BitWriter core output.
 ///
@@ -10,8 +9,7 @@ use std::ptr;
 pub trait BitDst: Allocate + Pos {
     #[allow(dead_code)]
     fn push_bytes(&mut self, bytes: usize, n_bytes: usize) {
-        assert!(n_bytes <= mem::size_of::<usize>());
-        unsafe { self.push_bytes_unchecked(bytes, n_bytes) }
+        self.push_bytes_unchecked(bytes, n_bytes)
     }
 
     /// Pushes bytes, as little-endian `usize` packed to the right with any unused bytes undefined.
@@ -21,18 +19,14 @@ pub trait BitDst: Allocate + Pos {
     ///
     /// Implementations may choose either to panic if insufficient memory is allocated or lazily
     /// throw an error on finalize.
-    //
-    /// # Safety
-    ///
-    /// * `n_bytes <= mem::size_of::<usize>()`
-    unsafe fn push_bytes_unchecked(&mut self, bytes: usize, n_bytes: usize);
+    fn push_bytes_unchecked(&mut self, bytes: usize, n_bytes: usize);
 
     fn finalize(&mut self) -> io::Result<()>;
 }
 
 impl<T: BitDst + ?Sized> BitDst for &mut T {
     #[inline(always)]
-    unsafe fn push_bytes_unchecked(&mut self, bytes: usize, n_bytes: usize) {
+    fn push_bytes_unchecked(&mut self, bytes: usize, n_bytes: usize) {
         (**self).push_bytes_unchecked(bytes, n_bytes)
     }
 
@@ -44,17 +38,14 @@ impl<T: BitDst + ?Sized> BitDst for &mut T {
 
 impl BitDst for Vec<u8> {
     #[inline(always)]
-    unsafe fn push_bytes_unchecked(&mut self, bytes: usize, n_bytes: usize) {
-        debug_assert!(n_bytes <= mem::size_of::<usize>());
+    fn push_bytes_unchecked(&mut self, bytes: usize, n_bytes: usize) {
+        assert!(n_bytes <= mem::size_of::<usize>());
         let index = self.len();
         assert!(mem::size_of::<usize>() <= self.capacity() - self.len());
-        // We bind to a variable to ensure the pointer remains valid for the copy operation,
-        // preventing a Miri error where the temporary byte array is dropped too early.
         let src_bytes = bytes.to_le_bytes();
-        let src = src_bytes.as_ptr();
-        let dst = self.as_mut_ptr().add(index);
-        ptr::copy_nonoverlapping(src, dst, mem::size_of::<usize>());
-        self.set_len(index + n_bytes);
+        self.extend_from_slice(&[0u8; mem::size_of::<usize>()]);
+        self[index..index + mem::size_of::<usize>()].copy_from_slice(&src_bytes);
+        self.truncate(index + n_bytes);
     }
 
     #[inline(always)]

@@ -23,7 +23,7 @@ impl<'a, T: BitDst> BitWriter<'a, T> {
         debug_assert!(0 <= self.accum_bits);
         debug_assert!(self.accum_bits <= ACCUM_MAX);
         let n_bytes = self.accum_bits as usize / 8;
-        unsafe { self.inner.push_bytes_unchecked(self.accum_data, n_bytes) };
+        self.inner.push_bytes_unchecked(self.accum_data, n_bytes);
         self.accum_data >>= n_bytes * 8;
         self.accum_bits -= n_bytes as isize * 8;
         debug_assert!(0 <= self.accum_bits);
@@ -31,13 +31,10 @@ impl<'a, T: BitDst> BitWriter<'a, T> {
         debug_assert!(self.accum_data >> self.accum_bits == 0);
     }
 
-    /// # Safety
-    ///
-    /// * No more than `ACCUM_MAX - 7` bits in total are pushed without flushing.
     #[inline(always)]
-    pub unsafe fn push_unchecked(&mut self, bits: usize, n_bits: usize) {
+    pub fn push_unchecked(&mut self, bits: usize, n_bits: usize) {
         debug_assert!(0 <= self.accum_bits + n_bits as isize);
-        debug_assert!(self.accum_bits + n_bits as isize <= ACCUM_MAX);
+        assert!(self.accum_bits + n_bits as isize <= ACCUM_MAX);
         debug_assert!(bits >> n_bits == 0);
         self.accum_data |= bits << self.accum_bits;
         self.accum_bits += n_bits as isize;
@@ -48,7 +45,7 @@ impl<'a, T: BitDst> BitWriter<'a, T> {
         assert!(0 <= self.accum_bits);
         assert!(self.accum_bits <= ACCUM_MAX);
         let n_bytes = (self.accum_bits as usize).div_ceil(8);
-        unsafe { self.inner.push_bytes_unchecked(self.accum_data, n_bytes) };
+        self.inner.push_bytes_unchecked(self.accum_data, n_bytes);
         self.accum_bits -= n_bytes as isize * 8;
         debug_assert!(-7 <= self.accum_bits);
         debug_assert!(self.accum_bits <= 0);
@@ -79,7 +76,7 @@ mod tests {
         let fib: Vec<u32> = Fibonacci::default().take(32).collect();
         for &v in fib.iter() {
             wtr.flush();
-            unsafe { wtr.push_unchecked(v as usize, 32 - v.leading_zeros() as usize) };
+            wtr.push_unchecked(v as usize, 32 - v.leading_zeros() as usize);
         }
         let off = wtr.finalize()?;
         assert_eq!(FIB_32_BS.as_ref(), vec.as_slice());

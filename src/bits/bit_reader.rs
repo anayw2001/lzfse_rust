@@ -20,7 +20,7 @@ impl<T: BitSrc> BitReader<T> {
     pub fn new(inner: T, off: usize) -> crate::Result<Self> {
         assert!(off <= 7);
         let idx = inner.base() + inner.len() as u32 - mem::size_of::<usize>() as u32;
-        let accum_data = unsafe { inner.read_bytes(idx) };
+        let accum_data = inner.read_bytes(idx);
         let accum_bits = mem::size_of::<usize>() as isize * 8 - off as isize;
         if off != 0 && accum_data >> accum_bits != 0 {
             Err(Error::BadBitStream)
@@ -43,19 +43,17 @@ impl<T: BitSrc> BitReader<T> {
         let n_bits = n_bytes * 8;
         debug_assert!(n_bytes < mem::size_of::<usize>());
         self.idx -= n_bytes as u32;
-        self.accum_data = unsafe { self.inner.read_bytes(self.idx) };
+        self.accum_data = self.inner.read_bytes(self.idx);
         self.accum_bits += n_bits as isize;
         debug_assert!(0 <= self.accum_bits);
         debug_assert!(self.accum_bits <= ACCUM_MAX);
     }
 
-    /// # Safety
-    ///
-    /// * No more than `ACCUM_MAX` bits in total are pulled without flushing.
     #[inline(always)]
-    pub unsafe fn pull(&mut self, n_bits: usize) -> usize {
+    pub fn pull(&mut self, n_bits: usize) -> usize {
         debug_assert!(n_bits <= 32);
         self.accum_bits -= n_bits as isize;
+        assert!(0 <= self.accum_bits);
         // TODO consider `unchecked_shr` when stable.
         let accum_shift = self.accum_data >> (self.accum_bits & (ACCUM_MAX - 1));
         bit_mask::mask(accum_shift, n_bits)
@@ -95,7 +93,7 @@ mod tests {
         let fib: Vec<u32> = Fibonacci::default().take(32).collect();
         for &v in fib.iter().rev() {
             rdr.flush();
-            let u = unsafe { rdr.pull(32 - v.leading_zeros() as usize) as u32 };
+            let u = rdr.pull(32 - v.leading_zeros() as usize) as u32;
             assert_eq!(v, u);
         }
         assert_eq!((rdr.idx - rdr.inner.base()) as isize * 8 + rdr.accum_bits, 64);
@@ -110,9 +108,9 @@ mod tests {
         let fib: Vec<u32> = Fibonacci::default().take(32).collect();
         for &v in fib.iter().rev() {
             rdr.flush();
-            let u = unsafe { rdr.pull(32 - v.leading_zeros() as usize) as u32 };
+            let u = rdr.pull(32 - v.leading_zeros() as usize) as u32;
             assert_eq!(v, u);
-            let u = unsafe { rdr.pull(0) };
+            let u = rdr.pull(0);
             assert_eq!(0, u);
         }
         assert_eq!((rdr.idx - rdr.inner.base()) as isize * 8 + rdr.accum_bits, 64);
@@ -127,10 +125,10 @@ mod tests {
         for off in 0..7 {
             let mut rdr = BitReader::new(src, off)?;
             for _ in 0..8 - off {
-                assert_eq!(unsafe { rdr.pull(1) }, 0);
+                assert_eq!(rdr.pull(1), 0);
             }
             assert_eq!((rdr.idx - rdr.inner.base()) as isize * 8 + rdr.accum_bits, 64);
-            assert_eq!(unsafe { rdr.pull(1) }, 1);
+            assert_eq!(rdr.pull(1), 1);
             assert_eq!((rdr.idx - rdr.inner.base()) as isize * 8 + rdr.accum_bits, 63);
         }
         Ok(())

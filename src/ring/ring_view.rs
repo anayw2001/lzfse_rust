@@ -139,10 +139,10 @@ impl<'a, T: Copy + RingType> ShortBuffer for RingView<'a, T> {
 
 impl<'a, T: Copy + RingType> BitSrc for RingView<'a, T> {
     #[inline(always)]
-    unsafe fn read_bytes(&self, idx: Idx) -> usize {
+    fn read_bytes(&self, idx: Idx) -> usize {
         assert!(mem::size_of::<usize>() <= WIDE);
         let index = usize::from(idx) % T::RING_SIZE as usize;
-        self.ring_ptr.add(index).cast::<usize>().read_unaligned().to_le()
+        unsafe { self.ring_ptr.add(index).cast::<usize>().read_unaligned().to_le() }
     }
 
     #[inline(always)]
@@ -183,7 +183,7 @@ mod tests {
         rdr.fill()?;
         let view = rdr.view();
         assert_eq!(view.base(), Idx::Q0);
-        assert_eq!(unsafe { view.read_bytes(idx) }, expected);
+        assert_eq!(view.read_bytes(idx), expected);
         Ok(())
     }
 

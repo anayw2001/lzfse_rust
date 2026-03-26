@@ -103,10 +103,12 @@ impl<'a, O, T: RingBlock> Allocate for RingShortWriter<'a, O, T> {
 
 impl<'a, O, T: RingBlock> BitDst for RingShortWriter<'a, O, T> {
     #[inline(always)]
-    unsafe fn push_bytes_unchecked(&mut self, bytes: usize, n_bytes: usize) {
+    fn push_bytes_unchecked(&mut self, bytes: usize, n_bytes: usize) {
         debug_assert!(n_bytes <= mem::size_of::<usize>());
         let index = self.idx % T::RING_SIZE as usize;
-        self.ring.as_mut_ptr().add(index).cast::<usize>().write_unaligned(bytes.to_le());
+        unsafe {
+            self.ring.as_mut_ptr().add(index).cast::<usize>().write_unaligned(bytes.to_le());
+        }
         self.idx += n_bytes as u32;
     }
 
