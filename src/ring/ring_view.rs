@@ -25,12 +25,6 @@ impl<'a, T: RingType> RingView<'a, T> {
         debug_assert!((tail - head) as u32 <= T::RING_SIZE);
         Self { ring: ring.nominal_slice(), head, tail, _phantom: PhantomData }
     }
-
-    /// Returns a raw pointer to the start of the nominal data range.
-    #[inline(always)]
-    pub fn as_ptr(&self) -> *const u8 {
-        self.ring.as_ptr()
-    }
 }
 
 impl<'a, T> Len for RingView<'a, T> {

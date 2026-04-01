@@ -9,19 +9,12 @@ use super::ring_view::RingView;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
-use std::ptr;
-use std::slice;
 
 pub const OVERMATCH_LEN: usize = 5 * mem::size_of::<usize>();
 
 pub struct Ring<'a, T>(&'a mut [u8], PhantomData<T>);
 
 impl<'a, T: RingType> Ring<'a, T> {
-    /// Returns a raw pointer to the entire ring buffer.
-    pub fn full_ptr(&self) -> *const u8 {
-        self.0.as_ptr()
-    }
-
     /// Returns a raw mut pointer to the start of the nominal data range.
     #[inline(always)]
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
@@ -38,12 +31,6 @@ impl<'a, T: RingType> Ring<'a, T> {
     pub fn nominal_slice(&self) -> &[u8] {
         let start = T::RING_LIMIT as usize;
         &self.0[start..start + T::RING_SIZE as usize]
-    }
-
-    #[inline(always)]
-    pub fn nominal_slice_mut(&mut self) -> &mut [u8] {
-        let start = T::RING_LIMIT as usize;
-        &mut self.0[start..start + T::RING_SIZE as usize]
     }
 }
 
@@ -352,25 +339,6 @@ impl<'a, T: RingType> From<&'a mut RingBox<T>> for Ring<'a, T> {
     fn from(ring_box: &'a mut RingBox<T>) -> Self {
         Self(&mut ring_box.0, PhantomData)
     }
-}
-
-#[inline(always)]
-unsafe fn zone_copy_1<T: RingType>(ptr: *mut u8, len: usize) {
-    assert!(len <= T::RING_LIMIT as usize);
-    ptr::copy_nonoverlapping(ptr, ptr.add(T::RING_SIZE as usize), len);
-}
-
-#[inline(always)]
-unsafe fn zone_copy_2<T: RingType>(ptr: *mut u8, len: usize) {
-    ptr::copy_nonoverlapping(ptr.add(T::RING_SIZE as usize), ptr, len);
-}
-
-#[inline(always)]
-unsafe fn zone_eq<T: RingType>(ptr: *mut u8, len: usize) -> bool {
-    assert!(len <= T::RING_LIMIT as usize);
-    let u = slice::from_raw_parts(ptr.add(T::RING_SIZE as usize), len);
-    let v = slice::from_raw_parts(ptr, len);
-    u == v
 }
 
 #[cfg(test)]

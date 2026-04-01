@@ -28,49 +28,40 @@ impl Decoder {
         let mut offset = 0;
         self.0[0] = VEntry::default();
         offset += 0;
-        unsafe {
-            build_v_table_block(
-                weights.l_block(),
-                &L_EXTRA_BITS,
-                &L_BASE_VALUE,
-                &mut self.0[offset as usize..offset as usize + L_STATES as usize],
-                offset,
-            )
-        };
+        build_v_table_block(
+            weights.l_block(),
+            &L_EXTRA_BITS,
+            &L_BASE_VALUE,
+            &mut self.0[offset as usize..offset as usize + L_STATES as usize],
+            offset,
+        );
         offset += L_STATES as i16;
-        unsafe {
-            build_v_table_block(
-                weights.m_block(),
-                &M_EXTRA_BITS,
-                &M_BASE_VALUE,
-                &mut self.0[offset as usize..offset as usize + M_STATES as usize],
-                offset,
-            )
-        };
+        build_v_table_block(
+            weights.m_block(),
+            &M_EXTRA_BITS,
+            &M_BASE_VALUE,
+            &mut self.0[offset as usize..offset as usize + M_STATES as usize],
+            offset,
+        );
         offset += M_STATES as i16;
-        unsafe {
-            build_v_table_block(
-                weights.d_block(),
-                &D_EXTRA_BITS,
-                &D_BASE_VALUE,
-                &mut self.0[offset as usize..offset as usize + D_STATES as usize],
-                offset,
-            )
-        };
+        build_v_table_block(
+            weights.d_block(),
+            &D_EXTRA_BITS,
+            &D_BASE_VALUE,
+            &mut self.0[offset as usize..offset as usize + D_STATES as usize],
+            offset,
+        );
         offset += D_STATES as i16;
         assert_eq!(offset as usize, self.0.len());
     }
 
     fn init_u_table(&mut self, weights: &Weights) {
         assert!(self.0.len() <= u16::MAX as usize);
-        unsafe { build_u_table(weights.u_block(), &mut self.1) };
+        build_u_table(weights.u_block(), &mut self.1);
     }
 
-    /// # Safety
-    ///
-    /// `reader` can pull `MAX_L_BITS`
     #[inline(always)]
-    pub unsafe fn l<T>(&self, reader: &mut BitReader<T>, state: &mut L) -> LiteralLen<Fse>
+    pub fn l<T>(&self, reader: &mut BitReader<T>, state: &mut L) -> LiteralLen<Fse>
     where
         T: BitSrc,
     {
@@ -79,12 +70,9 @@ impl Decoder {
         LiteralLen::new(self.0[state.0].decode(reader, &mut state.0))
     }
 
-    /// # Safety
-    ///
-    /// `reader` can pull `MAX_M_BITS`
     #[allow(clippy::int_plus_one)]
     #[inline(always)]
-    pub unsafe fn m<T>(&self, reader: &mut BitReader<T>, state: &mut M) -> MatchLen<Fse>
+    pub fn m<T>(&self, reader: &mut BitReader<T>, state: &mut M) -> MatchLen<Fse>
     where
         T: BitSrc,
     {
@@ -93,25 +81,15 @@ impl Decoder {
         MatchLen::new(self.0[state.0].decode(reader, &mut state.0))
     }
 
-    /// # Safety
-    ///
-    /// `reader` can pull `MAX_D_BITS`
     #[inline(always)]
-    pub unsafe fn d<T: BitSrc>(
-        &self,
-        reader: &mut BitReader<T>,
-        state: &mut D,
-    ) -> MatchDistancePack<Fse> {
+    pub fn d<T: BitSrc>(&self, reader: &mut BitReader<T>, state: &mut D) -> MatchDistancePack<Fse> {
         debug_assert!(state.check());
         debug_assert!(state.0 < self.0.len());
         MatchDistancePack::new(self.0[state.0].decode(reader, &mut state.0))
     }
 
-    /// # Safety
-    ///
-    /// `reader` can pull `MAX_U_BITS`
     #[inline(always)]
-    pub unsafe fn u<T>(&self, reader: &mut BitReader<T>, state: &mut U) -> u8
+    pub fn u<T>(&self, reader: &mut BitReader<T>, state: &mut U) -> u8
     where
         T: BitSrc,
     {
@@ -213,7 +191,7 @@ pub struct VEntry {
 
 impl VEntry {
     #[inline(always)]
-    unsafe fn decode<T: BitSrc>(self, bsi: &mut BitReader<T>, state: &mut usize) -> u32 {
+    fn decode<T: BitSrc>(self, bsi: &mut BitReader<T>, state: &mut usize) -> u32 {
         *state = (bsi.pull(self.k as usize) as isize + self.delta as isize) as usize;
         self.v_base + bsi.pull(self.v_bits as usize) as u32
     }
@@ -229,19 +207,15 @@ pub struct UEntry {
 
 impl UEntry {
     #[inline(always)]
-    pub unsafe fn decode<T: BitSrc>(self, reader: &mut BitReader<T>, state: &mut usize) -> u8 {
+    pub fn decode<T: BitSrc>(self, reader: &mut BitReader<T>, state: &mut usize) -> u8 {
         *state = (reader.pull(self.k as usize) as isize + self.delta as isize) as usize;
         self.symbol
     }
 }
 
-/// # Safety
-///
-/// `weights` table totals <= `table.len()`
-/// `offset` with respect to the entire v_table is correct
 #[allow(arithmetic_overflow)]
 #[allow(clippy::needless_range_loop)]
-unsafe fn build_v_table_block(
+fn build_v_table_block(
     weights: &[u16],
     v_bits_table: &[u8],
     v_base_table: &[u32],
@@ -290,12 +264,9 @@ unsafe fn build_v_table_block(
     }
 }
 
-/// # Safety
-///
-/// `weights` table totals <= `table.len()`
 #[allow(arithmetic_overflow)]
 #[allow(clippy::needless_range_loop)]
-pub unsafe fn build_u_table(weights: &[u16], table: &mut [UEntry]) {
+pub fn build_u_table(weights: &[u16], table: &mut [UEntry]) {
     let n_states = table.len() as u32;
     assert!(n_states.is_power_of_two());
     let n_clz = n_states.leading_zeros();

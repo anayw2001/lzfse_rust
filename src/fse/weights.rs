@@ -5,6 +5,7 @@ use super::constants::{self, *};
 use super::error_kind::FseErrorKind;
 use super::weight_encoder::{self};
 use super::Fse;
+use std::convert::TryInto;
 use std::mem;
 
 use std::io;
@@ -69,11 +70,10 @@ impl Weights {
         if src.len() > V1_WEIGHT_PAYLOAD_BYTES as usize {
             return Err(FseErrorKind::WeightPayloadOverflow.into());
         }
-        let src = src.as_ptr();
-        let dst = self.0.as_mut_ptr();
-        for off in 0..N_WEIGHTS {
-            let w = (unsafe { src.cast::<u16>().add(off).read_unaligned() }).to_le();
-            unsafe { *dst.add(off) = w };
+        for (off, weight) in self.0.iter_mut().enumerate() {
+            let start = off * 2;
+            let bytes = src[start..start + 2].try_into().unwrap();
+            *weight = u16::from_le_bytes(bytes);
         }
         self.check_totals()
     }

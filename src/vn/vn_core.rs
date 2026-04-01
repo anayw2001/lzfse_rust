@@ -10,6 +10,7 @@ use super::error_kind::VnErrorKind;
 use super::object::Vn;
 use super::opc;
 
+use std::convert::TryInto;
 use std::mem;
 use std::num::NonZeroU32;
 
@@ -128,7 +129,7 @@ impl VnCore {
         }
         // If `dst_mark == u64;:MAX` and inlined the compiler should elide this check.
         while dst.n_raw_bytes() <= dst_mark {
-            if let Some(n_payload_bytes) = unsafe { self.atomic_op(dst, src.short_bytes())? } {
+            if let Some(n_payload_bytes) = self.atomic_op(dst, src.short_bytes())? {
                 src.skip_unchecked(n_payload_bytes.get() as usize);
             } else {
                 debug_assert!(src.len() >= 8);
@@ -139,25 +140,13 @@ impl VnCore {
         Ok(true)
     }
 
-    /// Barring write errors which will leave `dst` in an undefined state, this operation is atomic.
-    ///
-    /// Throws `PayloadUnderflow` error if insufficient `src` bytes are available, or if after
-    /// decoding, less than 8 bytes are present in `src` unless `Op::Eof`. This latter mechanic
-    /// allows us to omit a bounds check when cycling this method.
-    ///
-    /// Returns the number of `src` bytes consumed, or none if `Op::Eof` which implies 8 bytes
-    /// consumed.
-    ///
-    /// # Safety
-    ///
-    /// * `src.len() >= 8`
     #[inline(always)]
-    unsafe fn atomic_op<O>(&mut self, dst: &mut O, src: &[u8]) -> crate::Result<Option<NonZeroU32>>
+    fn atomic_op<O>(&mut self, dst: &mut O, src: &[u8]) -> crate::Result<Option<NonZeroU32>>
     where
         O: LzWriter,
     {
         debug_assert!(src.len() >= 8);
-        let opu = src.as_ptr().cast::<u32>().read_unaligned().to_le();
+        let opu = u32::from_le_bytes(src[0..4].try_into().unwrap());
         let n_payload_bytes = match OP_TABLE[opu as usize & 0xFF] {
             Op::SmlL => self.typ_l(dst, &src[1..], opc::decode_sml_l(opu))? + 1,
             Op::LrgL => self.typ_l(dst, &src[2..], opc::decode_lrg_l(opu))? + 2,
@@ -193,10 +182,7 @@ impl VnCore {
         Ok(0)
     }
 
-    /// # Safety
-    ///
-    /// * `literal.len() <= Vn::MAX_LITERAL_LEN`
-    unsafe fn typ_l<O>(&mut self, dst: &mut O, src: &[u8], literal_len: u32) -> crate::Result<u32>
+    fn typ_l<O>(&mut self, dst: &mut O, src: &[u8], literal_len: u32) -> crate::Result<u32>
     where
         O: LzWriter,
     {
@@ -204,16 +190,12 @@ impl VnCore {
         if src.len() < literal_len as usize + 8 {
             return Err(crate::Error::PayloadUnderflow);
         }
-        let bytes =
-            ShortBytes::<LiteralLen<Vn>, W08>::from_bytes_unchecked(src, literal_len as usize);
+        let bytes = ShortBytes::<LiteralLen<Vn>, W08>::from_bytes(src, literal_len as usize);
         dst.write_bytes_short(bytes)?;
         Ok(literal_len)
     }
 
-    /// # Safety
-    ///
-    /// * `match_len != 0`
-    unsafe fn typ_m<O>(&mut self, dst: &mut O, src: &[u8], match_len: u32) -> crate::Result<u32>
+    fn typ_m<O>(&mut self, dst: &mut O, src: &[u8], match_len: u32) -> crate::Result<u32>
     where
         O: LzWriter,
     {
@@ -225,12 +207,7 @@ impl VnCore {
         Ok(0)
     }
 
-    /// # Safety
-    ///
-    /// * `literal.len() <= size_of::<u32>()`
-    /// * `match_len <= Vn::MAX_MATCH_LEN`
-    /// * `match_len != 0`
-    unsafe fn pre_d<O>(
+    fn pre_d<O>(
         &mut self,
         dst: &mut O,
         src: &[u8],
@@ -245,7 +222,7 @@ impl VnCore {
         if src.len() < literal_len as usize + 8 {
             return Err(crate::Error::PayloadUnderflow);
         }
-        let bytes = src.as_ptr().cast::<u32>().read_unaligned();
+        let bytes = u32::from_le_bytes(src[0..4].try_into().unwrap());
         let literal_len = LiteralLen::new(literal_len);
         let match_len = MatchLen::new(match_len);
         dst.write_quad(bytes, literal_len)?;
@@ -253,13 +230,7 @@ impl VnCore {
         Ok(literal_len.get())
     }
 
-    /// # Safety
-    ///
-    /// * `literal_len <= Vn::MAX_LITERAL_LEN`
-    /// * `match_len <= Vn::MAX_MATCH_LEN`
-    /// * `match_distance <= Vn::MAX_MATCH_DISTANCE`
-    /// * `match_len != 0`
-    unsafe fn typ_d<O>(
+    fn typ_d<O>(
         &mut self,
         dst: &mut O,
         src: &[u8],
@@ -275,7 +246,7 @@ impl VnCore {
         if src.len() < literal_len as usize + 8 {
             return Err(crate::Error::PayloadUnderflow);
         }
-        let bytes = src.as_ptr().cast::<u32>().read_unaligned();
+        let bytes = u32::from_le_bytes(src[0..4].try_into().unwrap());
         let literal_len = LiteralLen::new(literal_len);
         let match_len = MatchLen::new(match_len);
         let match_distance = MatchDistanceUnpack::new(match_distance);

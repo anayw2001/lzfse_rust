@@ -53,14 +53,14 @@ impl Buddy {
 
     fn decode(&mut self) -> io::Result<()> {
         assert!(self.weights.iter().map(|&u| u as usize).sum::<usize>() <= self.decode_table.len());
-        unsafe { decoder::build_u_table(&self.weights, &mut self.decode_table) };
+        decoder::build_u_table(&self.weights, &mut self.decode_table);
         self.dec.clear();
         self.dec.resize(self.bytes.len(), 0);
         let mut rdr = BitReader::new(self.enc.as_slice(), self.off)?;
         let mut state = self.state as usize;
         for b in self.dec.iter_mut() {
             debug_assert!(state < N_STATES as usize);
-            *b = unsafe { self.decode_table[state].decode(&mut rdr, &mut state) };
+            *b = self.decode_table[state].decode(&mut rdr, &mut state);
             rdr.flush();
         }
         rdr.finalize()?;

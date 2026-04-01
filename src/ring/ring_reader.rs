@@ -4,7 +4,6 @@ use crate::types::{ByteReader, Idx};
 
 use super::object::Ring;
 use super::ring_block::RingBlock;
-use super::ring_size::RingSize;
 use super::ring_type::RingType;
 use super::ring_view::RingView;
 

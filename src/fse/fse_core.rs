@@ -104,13 +104,13 @@ impl FseCore {
             // `flush` constraints:
             // 32 bit systems: flush after each L, M, D component pull.
             // 64 bit systems: flush after all L, M, D components have been pulled.
-            let literal_len = unsafe { self.decoder.l(&mut reader, &mut state.0) };
+            let literal_len = self.decoder.l(&mut reader, &mut state.0);
             #[cfg(target_pointer_width = "32")]
             reader.flush();
-            let match_len = unsafe { self.decoder.m(&mut reader, &mut state.1) };
+            let match_len = self.decoder.m(&mut reader, &mut state.1);
             #[cfg(target_pointer_width = "32")]
             reader.flush();
-            let match_distance_pack = unsafe { self.decoder.d(&mut reader, &mut state.2) };
+            let match_distance_pack = self.decoder.d(&mut reader, &mut state.2);
             reader.flush();
             match_distance.substitute(match_distance_pack);
             let ptr = unsafe { self.literals.as_ptr().add(literal_index as usize) };

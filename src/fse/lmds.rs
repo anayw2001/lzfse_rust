@@ -41,13 +41,13 @@ impl Lmds {
             // `flush` constraints:
             // 32 bit systems: flush after each L, M, D component pull.
             // 64 bit systems: flush after all L, M, D components have been pulled.
-            let literal_len = unsafe { decoder.l(&mut reader, &mut state.0) };
+            let literal_len = decoder.l(&mut reader, &mut state.0);
             #[cfg(target_pointer_width = "32")]
             reader.flush();
-            let match_len = unsafe { decoder.m(&mut reader, &mut state.1) };
+            let match_len = decoder.m(&mut reader, &mut state.1);
             #[cfg(target_pointer_width = "32")]
             reader.flush();
-            let match_distance_zeroed = unsafe { decoder.d(&mut reader, &mut state.2) };
+            let match_distance_zeroed = decoder.d(&mut reader, &mut state.2);
             reader.flush();
             *lmd = LmdPack(literal_len.into(), match_len.into(), match_distance_zeroed);
         }

@@ -1,42 +1,36 @@
 // Fixed constant. Max copy width. Do not change.
 pub const WIDE: usize = 32;
 
-// Default copy width. Power of two and <= WIDE.
-pub const COPY_WIDTH: usize = 16;
+mod private {
+  pub trait Sealed {}
+}
 
-/// # Safety
-///
-/// * `WIDTH.is_power_of_two()`
-/// * `WIDTH <= WIDE`
-pub unsafe trait Width {
-    const WIDTH: usize;
+pub trait Width: private::Sealed {
+    const POWER: u8;
+    const _CHECK: () = assert!(Self::POWER <= 5, "Exponent is higher than supported!");
+    const WIDTH: usize = 1usize << Self::POWER;
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct W00;
 
-unsafe impl Width for W00 {
-    const WIDTH: usize = COPY_WIDTH;
+impl private::Sealed for W00 {}
+impl Width for W00 {
+    const POWER: u8 = 4;
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct W08;
 
-unsafe impl Width for W08 {
-    const WIDTH: usize = 8;
+impl private::Sealed for W08 {}
+impl Width for W08 {
+    const POWER: u8 = 3;
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct W16;
 
-unsafe impl Width for W16 {
-    const WIDTH: usize = 16;
-}
-
-#[allow(dead_code)]
-#[derive(Copy, Clone, Debug)]
-pub struct Wide;
-
-unsafe impl Width for Wide {
-    const WIDTH: usize = WIDE;
+impl private::Sealed for W16 {}
+impl Width for W16 {
+    const POWER: u8 = 4;
 }
