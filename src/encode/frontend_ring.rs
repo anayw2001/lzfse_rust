@@ -190,16 +190,16 @@ impl<'a, T: Copy + RingBlock> FrontendRing<'a, T> {
         let index = self.tail % T::RING_SIZE as usize;
         let limit = (self.mark - self.tail) as usize;
         if len < limit {
-            unsafe { self.write_block_len(src, index, len) };
+            self.write_block_len(src, index, len);
             false
         } else {
-            unsafe { self.write_block_len(src, index, limit) };
+            self.write_block_len(src, index, limit);
             true
         }
     }
 
     #[inline(always)]
-    unsafe fn write_block_len(&mut self, src: &mut &[u8], index: usize, len: usize) {
+    fn write_block_len(&mut self, src: &mut &[u8], index: usize, len: usize) {
         self.ring[index..index + len].copy_from_slice(&src[..len]);
         self.tail += len as u32;
         self.n_raw_bytes += len as u64;
@@ -372,7 +372,7 @@ impl<'a, T: Copy + RingBlock> FrontendRing<'a, T> {
             let queue = self.table.push::<B::Type>(u_idx);
             let incoming = self.find_match::<B::Type, false>(queue, u_idx, Self::LONG_MATCH_LEN);
             if let Some(select) = self.pending.select::<GOOD_MATCH_LEN>(incoming) {
-                unsafe { self.push_match(backend, dst, select)? };
+                self.push_match(backend, dst, select)?;
                 idx += 1;
                 for _ in 0..(self.literal_idx - idx) {
                     let u = self.get_u32::<B::Type>(idx);
@@ -419,7 +419,7 @@ impl<'a, T: Copy + RingBlock> FrontendRing<'a, T> {
             let max = (self.tail - idx) as u32;
             let incoming = self.find_match::<B::Type, true>(queue, u_idx, max);
             if let Some(select) = self.pending.select::<GOOD_MATCH_LEN>(incoming) {
-                unsafe { self.push_match(backend, dst, select)? };
+                self.push_match(backend, dst, select)?;
                 if self.literal_idx >= self.idx {
                     // Unlikely.
                     // Final block complete, no need to populate history table.
@@ -514,14 +514,14 @@ impl<'a, T: Copy + RingBlock> FrontendRing<'a, T> {
         dst: &mut O,
     ) -> io::Result<()> {
         if self.pending.match_len != 0 {
-            unsafe { self.push_match(backend, dst, self.pending)? };
+            self.push_match(backend, dst, self.pending)?;
             self.pending.match_len = 0;
         }
         Ok(())
     }
 
     #[inline(always)]
-    unsafe fn push_match<B: Backend, O: ShortWriter>(
+    fn push_match<B: Backend, O: ShortWriter>(
         &mut self,
         backend: &mut B,
         dst: &mut O,
@@ -876,7 +876,7 @@ mod tests {
         frontend.mark = Idx::Q0 + T::RING_BLK_SIZE;
         frontend.match_short(&mut backend, &mut dst).unwrap();
         if frontend.pending.match_len != 0 {
-            unsafe { frontend.push_match(&mut backend, &mut dst, frontend.pending)? };
+            frontend.push_match(&mut backend, &mut dst, frontend.pending)?;
         }
         let literal_len = (frontend.tail - frontend.literal_idx) as u32;
         if literal_len > 0 {
@@ -907,7 +907,7 @@ mod tests {
             frontend.mark = Idx::Q0 + n.div_ceil(T::RING_BLK_SIZE) * T::RING_BLK_SIZE;
             frontend.match_short(&mut backend, &mut dst)?;
             if frontend.pending.match_len != 0 {
-                unsafe { frontend.push_match(&mut backend, &mut dst, frontend.pending)? };
+                frontend.push_match(&mut backend, &mut dst, frontend.pending)?;
             }
             assert_eq!(frontend.literal_idx, frontend.tail);
             assert_eq!(backend.literals, [0]);
@@ -937,7 +937,7 @@ mod tests {
             frontend.mark = Idx::Q0 + T::RING_SIZE;
             frontend.match_long(&mut backend, &mut dst)?;
             if frontend.pending.match_len != 0 {
-                unsafe { frontend.push_match(&mut backend, &mut dst, frontend.pending)? };
+                frontend.push_match(&mut backend, &mut dst, frontend.pending)?;
             }
             assert_eq!(backend.literals, []);
             assert_eq!(backend.lmds.len(), 1);
@@ -977,7 +977,7 @@ mod tests {
             frontend.mark = Idx::Q0 + n.div_ceil(T::RING_BLK_SIZE) * T::RING_BLK_SIZE;
             frontend.match_short(&mut backend, &mut dst)?;
             if frontend.pending.match_len != 0 {
-                unsafe { frontend.push_match(&mut backend, &mut dst, frontend.pending)? };
+                frontend.push_match(&mut backend, &mut dst, frontend.pending)?;
             }
             assert_eq!(frontend.literal_idx, frontend.tail);
             assert_eq!(backend.literals, [1, 2, 3, 0]);
