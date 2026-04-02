@@ -13,6 +13,7 @@ use super::history::{History, HistoryTable, Item};
 use super::match_object::Match;
 use super::match_unit::MatchUnit;
 
+use std::convert::TryInto;
 use std::io;
 use std::mem;
 
@@ -182,18 +183,18 @@ impl<'a> FrontendBytes<'a> {
         assert!(self.index as usize + mem::size_of::<u32>() <= self.block.len() + 1);
         loop {
             // Hot loop.
-            let val = unsafe { get_u32(self.block, index) };
+            let val = get_u32(self.block, index);
             let item = Item::new(val, index.into());
             let queue = self.table.push::<B::Type>(item);
-            let incoming = unsafe { self.find_match::<B::Type>(queue, item) };
+            let incoming = self.find_match::<B::Type>(queue, item);
             if let Some(select) = self.pending.select::<GOOD_MATCH_LEN>(incoming) {
-                unsafe { self.push_match(backend, dst, select)? };
+                self.push_match(backend, dst, select)?;
                 if self.literal_index >= self.index {
                     // Unlikely.
                     break;
                 }
                 index += 1;
-                index = unsafe { self.sync_history::<B::Type>(index) };
+                index = self.sync_history::<B::Type>(index);
                 if index >= self.index {
                     // Unlikely
                     break;
@@ -211,7 +212,7 @@ impl<'a> FrontendBytes<'a> {
     }
 
     #[inline(always)]
-    unsafe fn find_match<B>(&self, queue: History, item: Item) -> Match
+    fn find_match<B>(&self, queue: History, item: Item) -> Match
     where
         B: BackendType,
     {
@@ -244,27 +245,27 @@ impl<'a> FrontendBytes<'a> {
     }
 
     #[inline(always)]
-    unsafe fn match_unit<M: MatchUnit>(&self, item: Item, match_item: Item) -> u32 {
+    fn match_unit<M: MatchUnit>(&self, item: Item, match_item: Item) -> u32 {
         debug_assert!(self.validate_match_items::<M>(item, match_item));
         let len = M::match_us((item.val, match_item.val));
         if len == 4 {
             let index = usize::from(item.idx);
             let match_index = usize::from(match_item.idx);
             let max = self.block.len() - index;
-            match_kit::fast_match_inc_unchecked(self.block, index, match_index, 4, max) as u32
+            match_kit::fast_match_inc(self.block, index, match_index, 4, max) as u32
         } else {
             len
         }
     }
 
     #[inline(always)]
-    unsafe fn match_dec<M: MatchUnit>(&self, idx: Idx, match_idx: Idx) -> u32 {
+    fn match_dec<M: MatchUnit>(&self, idx: Idx, match_idx: Idx) -> u32 {
         debug_assert!(self.validate_match_idxs::<M>(idx, match_idx));
         let index = usize::from(idx);
         let match_index = usize::from(match_idx);
         let literal_len = usize::from(idx) - self.literal_index as usize;
         let max = (literal_len).min(match_index);
-        match_kit::fast_match_dec_unchecked(self.block, index, match_index, max) as u32
+        match_kit::fast_match_dec(self.block, index, match_index, max) as u32
     }
 
     #[inline(always)]
@@ -277,14 +278,14 @@ impl<'a> FrontendBytes<'a> {
         if self.pending.match_len != 0 {
             assert!(self.literal_index as usize <= usize::from(self.pending.idx));
             assert!(usize::from(self.pending.idx) <= self.block.len());
-            unsafe { self.push_match(backend, dst, self.pending)? };
+            self.push_match(backend, dst, self.pending)?;
             self.pending.match_len = 0;
         }
         Ok(())
     }
 
     #[inline(always)]
-    unsafe fn push_match<B: Backend, O: ShortWriter>(
+    fn push_match<B: Backend, O: ShortWriter>(
         &mut self,
         backend: &mut B,
         dst: &mut O,
@@ -311,12 +312,12 @@ impl<'a> FrontendBytes<'a> {
         assert!(self.literal_index as usize <= self.block.len());
         let len = self.block.len() as u32 - self.literal_index;
         if len != 0 {
-            unsafe { self.push_literals(backend, dst, len)? };
+            self.push_literals(backend, dst, len)?;
         }
         Ok(())
     }
 
-    unsafe fn push_literals<B: Backend, O: ShortWriter>(
+    fn push_literals<B: Backend, O: ShortWriter>(
         &mut self,
         backend: &mut B,
         dst: &mut O,
@@ -333,7 +334,7 @@ impl<'a> FrontendBytes<'a> {
 
     #[inline(always)]
     #[must_use]
-    unsafe fn sync_history<B: BackendType>(&mut self, mut index: u32) -> u32 {
+    fn sync_history<B: BackendType>(&mut self, mut index: u32) -> u32 {
         while index < self.literal_index {
             let val = get_u32(self.src, index);
             let item = Item::new(val, index.into());
@@ -353,7 +354,7 @@ impl<'a> FrontendBytes<'a> {
         assert!(BLOCK_GUIDE <= i32::MAX as u32);
         assert!(self.literal_index <= BLOCK_GUIDE);
         assert!(self.literal_index as usize + mem::size_of::<u32>() <= self.src.len() + 1);
-        self.index = unsafe { self.sync_history::<B::Type>(self.index) };
+        self.index = self.sync_history::<B::Type>(self.index);
         assert!(B::Type::MAX_MATCH_DISTANCE <= self.index);
         let delta = self.index - B::Type::MAX_MATCH_DISTANCE;
         if self.literal_index < delta {
@@ -364,7 +365,7 @@ impl<'a> FrontendBytes<'a> {
             // probability of occurrence. Instead we take the reduction in code complexity/
             // size.
             self.pending.match_len = 0;
-            unsafe { self.push_literals(backend, dst, delta - self.literal_index)? };
+            self.push_literals(backend, dst, delta - self.literal_index)?;
         }
         self.table.clamp_rebias(self.index.into(), delta);
         self.pending.rebias(delta);
@@ -402,7 +403,7 @@ impl<'a> FrontendBytes<'a> {
             && usize::from(m.idx + m.match_len) <= self.block.len()
     }
 
-    unsafe fn validate_match_items<M: MatchUnit>(&self, item: Item, match_item: Item) -> bool {
+    fn validate_match_items<M: MatchUnit>(&self, item: Item, match_item: Item) -> bool {
         self.validate_match_idxs::<M>(item.idx, match_item.idx)
             && (item.val ^ get_u32(self.block, item.idx.into())) & M::MATCH_MASK == 0
             && (match_item.val ^ get_u32(self.block, match_item.idx.into())) & M::MATCH_MASK == 0
@@ -414,9 +415,9 @@ impl<'a> FrontendBytes<'a> {
 }
 
 #[inline(always)]
-unsafe fn get_u32(bytes: &[u8], index: u32) -> u32 {
-    debug_assert!(index as usize + mem::size_of::<u32>() <= bytes.len());
-    bytes.as_ptr().add(index as usize).cast::<u32>().read_unaligned()
+fn get_u32(bytes: &[u8], index: u32) -> u32 {
+    let index = index as usize;
+    u32::from_ne_bytes(bytes[index..index + 4].try_into().unwrap())
 }
 
 #[cfg(test)]
@@ -556,11 +557,11 @@ mod tests {
         frontend.table.reset();
         frontend.match_blocks(&mut backend, &mut dst).unwrap();
         if frontend.pending.match_len != 0 {
-            unsafe { frontend.push_match(&mut backend, &mut dst, frontend.pending)? };
+            frontend.push_match(&mut backend, &mut dst, frontend.pending)?;
         }
         let literal_len = frontend.src.len() as u32 - frontend.literal_index;
         if literal_len > 0 {
-            unsafe { frontend.push_literals(&mut backend, &mut dst, literal_len)? };
+            frontend.push_literals(&mut backend, &mut dst, literal_len)?;
         }
         assert_eq!(backend.literals, [0, 0, 0, 0]);
         assert_eq!(backend.lmds, vec![Lmd::<Dummy>::new(4, 0, 1)]);
@@ -581,7 +582,7 @@ mod tests {
             frontend.table.reset();
             frontend.match_blocks(&mut backend, &mut dst)?;
             if frontend.pending.match_len != 0 {
-                unsafe { frontend.push_match(&mut backend, &mut dst, frontend.pending)? };
+                frontend.push_match(&mut backend, &mut dst, frontend.pending)?;
             }
             assert_eq!(frontend.literal_index, frontend.src.len() as u32);
             assert_eq!(backend.literals, [0]);
@@ -611,7 +612,7 @@ mod tests {
             frontend.table.reset();
             frontend.match_blocks(&mut backend, &mut dst)?;
             if frontend.pending.match_len != 0 {
-                unsafe { frontend.push_match(&mut backend, &mut dst, frontend.pending)? };
+                frontend.push_match(&mut backend, &mut dst, frontend.pending)?;
             }
             assert_eq!(frontend.literal_index, frontend.src.len() as u32);
             assert_eq!(backend.literals, [1, 2, 3, 4, 0]);

@@ -113,16 +113,25 @@ pub unsafe fn write_match_alt(src: *const u8, dst: *mut u8, dst_end: *mut u8, di
     }
 }
 
+/// # Safety
+///
+/// `src` must be valid for 1 byte read.
 #[inline(always)]
 unsafe fn expand_r1(src: *const u8) -> [u8; 8] {
     (src.cast::<u8>().read_unaligned() as u64 * 0x0101_0101_0101_0101).to_ne_bytes()
 }
 
+/// # Safety
+///
+/// `src` must be valid for 2 byte read.
 #[inline(always)]
 unsafe fn expand_r2(src: *const u8) -> [u8; 8] {
     (src.cast::<u16>().read_unaligned() as u64 * 0x0001_0001_0001_0001).to_ne_bytes()
 }
 
+/// # Safety
+///
+/// `src` must be valid for 4 byte read.
 #[inline(always)]
 #[cfg(target_endian = "little")]
 unsafe fn expand_r3(src: *const u8) -> [u8; 8] {
@@ -130,6 +139,9 @@ unsafe fn expand_r3(src: *const u8) -> [u8; 8] {
         .to_ne_bytes()
 }
 
+/// # Safety
+///
+/// `src` must be valid for 4 byte read.
 #[inline(always)]
 #[cfg(target_endian = "big")]
 unsafe fn expand_r3(src: *const u8) -> [u8; 8] {
@@ -137,21 +149,33 @@ unsafe fn expand_r3(src: *const u8) -> [u8; 8] {
         .to_ne_bytes()
 }
 
+/// # Safety
+///
+/// `src` must be valid for 4 byte read.
 #[inline(always)]
 unsafe fn expand_r4(src: *const u8) -> [u8; 8] {
     (src.cast::<u32>().read_unaligned() as u64 * 0x0000_0001_0000_0001).to_ne_bytes()
 }
 
+/// # Safety
+///
+/// `src` must be valid for 8 byte read.
 #[inline(always)]
 unsafe fn expand_r8(src: *const u8) -> [u8; 8] {
     src.cast::<u64>().read_unaligned().to_ne_bytes()
 }
 
+/// # Safety
+///
+/// `src` must be valid for 16 byte read.
 #[inline(always)]
 unsafe fn expand_r16(src: *const u8) -> [u8; 16] {
     src.cast::<u128>().read_unaligned().to_ne_bytes()
 }
 
+/// # Safety
+///
+/// `dst` must be valid for `dst_end - dst` byte writes.
 unsafe fn store_8(reg: [u8; 8], mut dst: *mut u8, dst_end: *mut u8) {
     let src = reg.as_ptr();
     loop {
@@ -163,6 +187,9 @@ unsafe fn store_8(reg: [u8; 8], mut dst: *mut u8, dst_end: *mut u8) {
     }
 }
 
+/// # Safety
+///
+/// `dst` must be valid for `dst_end - dst` byte writes.
 unsafe fn delta_8(reg: [u8; 8], mut dst: *mut u8, dst_end: *mut u8, delta: usize) {
     debug_assert!(delta < 8);
     let src = reg.as_ptr();
@@ -175,6 +202,9 @@ unsafe fn delta_8(reg: [u8; 8], mut dst: *mut u8, dst_end: *mut u8, delta: usize
     }
 }
 
+/// # Safety
+///
+/// `dst` must be valid for `dst_end - dst` byte writes.
 unsafe fn delta_16(reg: [u8; 16], mut dst: *mut u8, dst_end: *mut u8, delta: usize) {
     debug_assert!(delta <= 16);
     let src = reg.as_ptr();
@@ -187,6 +217,10 @@ unsafe fn delta_16(reg: [u8; 16], mut dst: *mut u8, dst_end: *mut u8, delta: usi
     }
 }
 
+/// # Safety
+///
+/// * `src` is valid for `len + W::WIDTH` byte reads.
+/// * `dst` is valid for `len + W::WIDTH` byte writes.
 unsafe fn copy_wide_match<W: Width>(mut src: *const u8, mut dst: *mut u8, dst_end: *mut u8) {
     ptr::copy_nonoverlapping(src, dst, W::WIDTH);
     dst = dst.add(W::WIDTH);
@@ -197,6 +231,10 @@ unsafe fn copy_wide_match<W: Width>(mut src: *const u8, mut dst: *mut u8, dst_en
     copy_wide_match_cont::<W>(src, dst, dst_end);
 }
 
+/// # Safety
+///
+/// * `src` is valid for `len + W::WIDTH` byte reads.
+/// * `dst` is valid for `len + W::WIDTH` byte writes.
 unsafe fn copy_wide_match_cont<W: Width>(mut src: *const u8, mut dst: *mut u8, dst_end: *mut u8) {
     loop {
         ptr::copy_nonoverlapping(src, dst, W::WIDTH);

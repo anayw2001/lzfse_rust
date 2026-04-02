@@ -1,5 +1,6 @@
 use super::ops;
 
+use std::convert::TryInto;
 use std::mem;
 
 #[allow(dead_code)]
@@ -17,6 +18,11 @@ pub fn fast_match_inc(
     unsafe { fast_match_inc_unchecked(bytes, index, match_index, len, max) }
 }
 
+/// # Safety
+///
+/// * `match_index < index`
+/// * `index <= bytes.len()`
+/// * `max <= bytes.len() - index`
 #[allow(clippy::missing_safety_doc)]
 #[inline(always)]
 pub unsafe fn fast_match_inc_unchecked(
@@ -29,10 +35,17 @@ pub unsafe fn fast_match_inc_unchecked(
     debug_assert!(match_index < index);
     debug_assert!(index <= bytes.len());
     debug_assert!(max <= bytes.len() - index);
-    let ptrs = (bytes.as_ptr().add(index), bytes.as_ptr().add(match_index));
     while len + mem::size_of::<usize>() <= max {
-        let u_0 = ptrs.0.add(len).cast::<usize>().read_unaligned();
-        let u_1 = ptrs.1.add(len).cast::<usize>().read_unaligned();
+        let u_0 = usize::from_ne_bytes(
+            bytes[index + len..index + len + mem::size_of::<usize>()]
+                .try_into()
+                .unwrap(),
+        );
+        let u_1 = usize::from_ne_bytes(
+            bytes[match_index + len..match_index + len + mem::size_of::<usize>()]
+                .try_into()
+                .unwrap(),
+        );
         let x = u_0 ^ u_1;
         if x != 0 {
             return len + ops::nclz_bytes(x) as usize;
@@ -40,7 +53,7 @@ pub unsafe fn fast_match_inc_unchecked(
         len += mem::size_of::<usize>();
     }
     while len < max {
-        if *ptrs.0.add(len) != *ptrs.1.add(len) {
+        if bytes[index + len] != bytes[match_index + len] {
             return len;
         }
         len += 1;
@@ -57,6 +70,11 @@ pub fn fast_match_dec(bytes: &[u8], index: usize, match_index: usize, max: usize
     unsafe { fast_match_dec_unchecked(bytes, index, match_index, max) }
 }
 
+/// # Safety
+///
+/// * `max <= match_index`
+/// * `match_index < index`
+/// * `index <= bytes.len()`
 #[inline(always)]
 pub unsafe fn fast_match_dec_unchecked(
     bytes: &[u8],
@@ -67,11 +85,18 @@ pub unsafe fn fast_match_dec_unchecked(
     debug_assert!(max <= match_index);
     debug_assert!(match_index < index);
     debug_assert!(index <= bytes.len());
-    let ptrs = (bytes.as_ptr().add(index), bytes.as_ptr().add(match_index));
     let mut len = mem::size_of::<usize>();
     while len <= max {
-        let u_0 = ptrs.0.sub(len).cast::<usize>().read_unaligned();
-        let u_1 = ptrs.1.sub(len).cast::<usize>().read_unaligned();
+        let u_0 = usize::from_ne_bytes(
+            bytes[index - len..index - len + mem::size_of::<usize>()]
+                .try_into()
+                .unwrap(),
+        );
+        let u_1 = usize::from_ne_bytes(
+            bytes[match_index - len..match_index - len + mem::size_of::<usize>()]
+                .try_into()
+                .unwrap(),
+        );
         let x = u_0 ^ u_1;
         if x != 0 {
             return len - mem::size_of::<usize>() + ops::nctz_bytes(x) as usize;
@@ -80,7 +105,7 @@ pub unsafe fn fast_match_dec_unchecked(
     }
     len -= mem::size_of::<usize>();
     while len != max {
-        if *ptrs.0.sub(len + 1) != *ptrs.1.sub(len + 1) {
+        if bytes[index - len - 1] != bytes[match_index - len - 1] {
             break;
         }
         len += 1;

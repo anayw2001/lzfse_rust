@@ -34,3 +34,12 @@ impl private::Sealed for W16 {}
 impl Width for W16 {
     const POWER: u8 = 4;
 }
+
+#[derive(Copy, Clone, Debug)]
+#[allow(dead_code)]
+pub struct Wide;
+
+impl private::Sealed for Wide {}
+impl Width for Wide {
+    const POWER: u8 = 5;
+}

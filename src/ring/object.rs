@@ -6,6 +6,7 @@ use super::ring_size::RingSize;
 use super::ring_type::RingType;
 use super::ring_view::RingView;
 
+use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -61,20 +62,17 @@ impl<'a, T: RingType> Ring<'a, T> {
             (usize::from(idxs.0)) % T::RING_SIZE as usize,
             (usize::from(idxs.1)) % T::RING_SIZE as usize,
         );
-        let u_0 = unsafe {
-            self.0
-                .as_ptr()
-                .add(T::RING_LIMIT as usize + indexes.0 + LEN)
-                .cast::<usize>()
-                .read_unaligned()
-        };
-        let u_1 = unsafe {
-            self.0
-                .as_ptr()
-                .add(T::RING_LIMIT as usize + indexes.1 + LEN)
-                .cast::<usize>()
-                .read_unaligned()
-        };
+        let start = T::RING_LIMIT as usize + LEN;
+        let u_0 = usize::from_ne_bytes(
+            self.0[start + indexes.0..start + indexes.0 + mem::size_of::<usize>()]
+                .try_into()
+                .unwrap(),
+        );
+        let u_1 = usize::from_ne_bytes(
+            self.0[start + indexes.1..start + indexes.1 + mem::size_of::<usize>()]
+                .try_into()
+                .unwrap(),
+        );
         let x = u_0 ^ u_1;
         if x != 0 {
             // Likely
@@ -93,21 +91,20 @@ impl<'a, T: RingType> Ring<'a, T> {
         let mut len = LEN + mem::size_of::<usize>();
         loop {
             for i in 0..4 {
-                let off = LEN + mem::size_of::<usize>() + i * mem::size_of::<usize>();
-                let u_0 = unsafe {
-                    self.0
-                        .as_ptr()
-                        .add(T::RING_LIMIT as usize + indexes.0 + off)
-                        .cast::<usize>()
-                        .read_unaligned()
-                };
-                let u_1 = unsafe {
-                    self.0
-                        .as_ptr()
-                        .add(T::RING_LIMIT as usize + indexes.1 + off)
-                        .cast::<usize>()
-                        .read_unaligned()
-                };
+                let off = T::RING_LIMIT as usize
+                    + LEN
+                    + mem::size_of::<usize>()
+                    + i * mem::size_of::<usize>();
+                let u_0 = usize::from_ne_bytes(
+                    self.0[off + indexes.0..off + indexes.0 + mem::size_of::<usize>()]
+                        .try_into()
+                        .unwrap(),
+                );
+                let u_1 = usize::from_ne_bytes(
+                    self.0[off + indexes.1..off + indexes.1 + mem::size_of::<usize>()]
+                        .try_into()
+                        .unwrap(),
+                );
                 let x = u_0 ^ u_1;
                 if x != 0 {
                     return len + i * mem::size_of::<usize>() + match_kit::nclz_bytes(x) as usize;
@@ -135,21 +132,17 @@ impl<'a, T: RingType> Ring<'a, T> {
             (usize::from(idxs.0).wrapping_sub(off)) % T::RING_SIZE as usize,
             (usize::from(idxs.1).wrapping_sub(off)) % T::RING_SIZE as usize,
         );
-        let off = 4 * mem::size_of::<usize>();
-        let u_0 = unsafe {
-            self.0
-                .as_ptr()
-                .add(T::RING_LIMIT as usize + indexes.0 + off)
-                .cast::<usize>()
-                .read_unaligned()
-        };
-        let u_1 = unsafe {
-            self.0
-                .as_ptr()
-                .add(T::RING_LIMIT as usize + indexes.1 + off)
-                .cast::<usize>()
-                .read_unaligned()
-        };
+        let start = T::RING_LIMIT as usize + 4 * mem::size_of::<usize>();
+        let u_0 = usize::from_ne_bytes(
+            self.0[start + indexes.0..start + indexes.0 + mem::size_of::<usize>()]
+                .try_into()
+                .unwrap(),
+        );
+        let u_1 = usize::from_ne_bytes(
+            self.0[start + indexes.1..start + indexes.1 + mem::size_of::<usize>()]
+                .try_into()
+                .unwrap(),
+        );
         let x = u_0 ^ u_1;
         if x != 0 {
             // Likely
@@ -164,21 +157,17 @@ impl<'a, T: RingType> Ring<'a, T> {
         let mut len = LEN + mem::size_of::<usize>();
         loop {
             for i in 0..4 {
-                let off = (3 - i) * mem::size_of::<usize>();
-                let u_0 = unsafe {
-                    self.0
-                        .as_ptr()
-                        .add(T::RING_LIMIT as usize + indexes.0 + off)
-                        .cast::<usize>()
-                        .read_unaligned()
-                };
-                let u_1 = unsafe {
-                    self.0
-                        .as_ptr()
-                        .add(T::RING_LIMIT as usize + indexes.1 + off)
-                        .cast::<usize>()
-                        .read_unaligned()
-                };
+                let off = T::RING_LIMIT as usize + (3 - i) * mem::size_of::<usize>();
+                let u_0 = usize::from_ne_bytes(
+                    self.0[off + indexes.0..off + indexes.0 + mem::size_of::<usize>()]
+                        .try_into()
+                        .unwrap(),
+                );
+                let u_1 = usize::from_ne_bytes(
+                    self.0[off + indexes.1..off + indexes.1 + mem::size_of::<usize>()]
+                        .try_into()
+                        .unwrap(),
+                );
                 let x = u_0 ^ u_1;
                 if x != 0 {
                     return len + i * mem::size_of::<usize>() + match_kit::nctz_bytes(x) as usize;
@@ -291,28 +280,23 @@ impl<'a, T: RingType> Ring<'a, T> {
 }
 
 impl<'a, T: RingSize + RingType> Ring<'a, T> {
+    /// # Safety
+    ///
+    /// `idx` must be within `RING_SIZE` bounds.
     #[inline(always)]
     pub fn get_u32(&self, idx: Idx) -> u32 {
-        let index = idx % T::RING_SIZE;
-        unsafe {
-            self.0
-                .as_ptr()
-                .add(T::RING_LIMIT as usize + index as usize)
-                .cast::<u32>()
-                .read_unaligned()
-        }
+        let index = (idx % T::RING_SIZE) as usize + T::RING_LIMIT as usize;
+        u32::from_ne_bytes(self.0[index..index + 4].try_into().unwrap())
     }
 
+    /// # Safety
+    ///
+    /// `index` must be within `RING_SIZE` bounds.
     #[inline(always)]
     pub fn set_quad_index(&mut self, index: usize, u: u32) {
         debug_assert!(index < T::RING_SIZE as usize);
-        unsafe {
-            self.0
-                .as_mut_ptr()
-                .add(T::RING_LIMIT as usize + index)
-                .cast::<u32>()
-                .write_unaligned(u);
-        }
+        let index = index + T::RING_LIMIT as usize;
+        self.0[index..index + 4].copy_from_slice(&u.to_ne_bytes());
     }
 }
 
