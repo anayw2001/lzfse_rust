@@ -114,7 +114,7 @@ impl FseCore {
             reader.flush();
             match_distance.substitute(match_distance_pack);
             let ptr = unsafe { self.literals.as_ptr().add(literal_index as usize) };
-            let bytes = unsafe { ShortBytes::from_raw_parts(ptr, literal_len.get() as usize) };
+            let bytes = ShortBytes::from_raw_parts(ptr, literal_len.get() as usize);
             literal_index += literal_len.get();
             if literal_index <= LITERALS_PER_BLOCK {
                 // Likely.
@@ -177,7 +177,7 @@ impl FseCore {
             let match_len: MatchLen<Fse> = match_len_pack.into();
             match_distance.substitute(match_distance_pack);
             let ptr = unsafe { self.literals.as_ptr().add(literal_index as usize) };
-            let bytes = unsafe { ShortBytes::from_raw_parts(ptr, literal_len.get() as usize) };
+            let bytes = ShortBytes::from_raw_parts(ptr, literal_len.get() as usize);
             literal_index += literal_len.get();
             if literal_index <= LITERALS_PER_BLOCK {
                 // Likely.

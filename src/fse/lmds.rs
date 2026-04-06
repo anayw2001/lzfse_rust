@@ -18,8 +18,9 @@ pub struct Lmds(Box<[LmdPack<Fse>]>, usize);
 
 impl Lmds {
     #[inline(always)]
-    pub unsafe fn push_unchecked(&mut self, lmd: LmdPack<Fse>) {
-        debug_assert!(self.1 < LMDS_PER_BLOCK as usize);
+    pub fn push_unchecked(&mut self, lmd: LmdPack<Fse>) {
+        // [PERFORMANCE_SENSITIVE] Added bounds check to make function safe.
+        assert!(self.1 < LMDS_PER_BLOCK as usize);
         self.0[self.1] = lmd;
         self.1 += 1;
     }
@@ -143,7 +144,7 @@ mod tests {
         pub fn push(&mut self, lmds: &[LmdPack<Fse>]) {
             assert!(lmds.len() <= LMDS_PER_BLOCK as usize);
             self.src.reset();
-            lmds.iter().for_each(|&u| unsafe { self.src.push_unchecked(u) });
+            lmds.iter().for_each(|&u| self.src.push_unchecked(u));
         }
 
         fn encode(&mut self) -> io::Result<()> {

@@ -7,8 +7,9 @@ use super::object::Ring;
 use super::ring_size::RingSize;
 use super::ring_type::RingType;
 
+use std::convert::TryInto;
 use std::marker::PhantomData;
-use std::{mem, ptr};
+use std::mem;
 
 /// Immutable ring view.
 #[derive(Copy, Clone)]
@@ -23,7 +24,8 @@ impl<'a, T: RingType> RingView<'a, T> {
     #[inline(always)]
     pub fn new(ring: &'a Ring<T>, head: Idx, tail: Idx) -> Self {
         debug_assert!((tail - head) as u32 <= T::RING_SIZE);
-        Self { ring: ring.nominal_slice(), head, tail, _phantom: PhantomData }
+        // [PERFORMANCE_SENSITIVE] Use full slice to allow safe reads with slack.
+        Self { ring: ring.full_slice(), head, tail, _phantom: PhantomData }
     }
 }
 
@@ -60,53 +62,55 @@ impl<'a, T: RingSize> Limit for RingView<'a, T> {
 
 impl<'a, T: Copy + RingType> CopyShort for RingView<'a, T> {
     #[inline(always)]
-    unsafe fn copy_short_raw<V: CopyType>(&self, dst: *mut u8, short_len: usize) {
+    fn copy_short_raw<V: CopyType>(&self, dst: &mut [u8], short_len: usize) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer manipulation with safe wide_copy.
         debug_assert!(short_len <= Self::SHORT_LIMIT as usize);
         debug_assert!(short_len <= self.len());
-        let index = self.head % T::RING_SIZE as usize;
-        debug_assert!(index + short_len <= T::RING_SIZE as usize + T::RING_LIMIT as usize);
-        let src = self.ring.as_ptr().add(index);
+        let index = (self.head % T::RING_SIZE as usize) + T::RING_LIMIT as usize;
+        debug_assert!(index + short_len <= T::RING_SIZE as usize + T::RING_LIMIT as usize + WIDE);
+        let src = &self.ring[index..];
         V::wide_copy::<W00>(src, dst, short_len);
     }
 }
 
 impl<'a, T: Copy + RingType> CopyLong for RingView<'a, T> {
     #[inline(always)]
-    unsafe fn copy_long_raw(&self, mut dst: *mut u8, mut len: usize) {
+    fn copy_long_raw(&self, dst: &mut [u8], mut len: usize) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer manipulation with safe wide_copy.
         debug_assert!(len <= self.len());
         let mut idx = self.head;
+        let mut off = 0;
         loop {
-            let index = idx % T::RING_SIZE as usize;
-            let limit = T::RING_SIZE as usize - index;
-            let src = self.ring.as_ptr().add(index);
+            let index = (idx % T::RING_SIZE as usize) + T::RING_LIMIT as usize;
+            let limit = T::RING_SIZE as usize - (idx % T::RING_SIZE as usize);
+            let src = &self.ring[index..];
             if len < limit {
-                debug_assert!(index + len <= T::RING_SIZE as usize + T::RING_LIMIT as usize);
-                CopyTypeLong::wide_copy::<W00>(src, dst, len);
+                debug_assert!(index + len <= T::RING_SIZE as usize + T::RING_LIMIT as usize + WIDE);
+                CopyTypeLong::wide_copy::<W00>(src, &mut dst[off..], len);
                 break;
             }
-            debug_assert!(index + limit <= T::RING_SIZE as usize + T::RING_LIMIT as usize);
-            CopyTypeLong::wide_copy::<W00>(src, dst, limit);
+            debug_assert!(index + limit <= T::RING_SIZE as usize + T::RING_LIMIT as usize + WIDE);
+            CopyTypeLong::wide_copy::<W00>(src, &mut dst[off..], limit);
             len -= limit;
             idx += limit as u32;
-            dst = dst.add(limit);
+            off += limit;
         }
     }
 }
 
-impl<'a, T: RingSize> PeekData for RingView<'a, T> {
+impl<'a, T: RingSize + RingType> PeekData for RingView<'a, T> {
     #[inline(always)]
     fn peek_data(&self, dst: &mut [u8]) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe copy with safe slice operations on full slice.
         debug_assert!(dst.len() <= WIDE);
         debug_assert!(self.head <= self.tail);
-        let index = self.head % T::RING_SIZE as usize;
+        let index = (self.head % T::RING_SIZE as usize) + T::RING_LIMIT as usize;
         let len = dst.len();
-        let src = unsafe { self.ring.as_ptr().add(index) };
-        let dst_ptr = dst.as_mut_ptr();
-        unsafe { ptr::copy_nonoverlapping(src, dst_ptr, len) };
+        dst.copy_from_slice(&self.ring[index..index + len]);
     }
 }
 
-impl<'a, T: RingSize> ReadData for RingView<'a, T> {
+impl<'a, T: RingSize + RingType> ReadData for RingView<'a, T> {
     #[inline(always)]
     fn read_data(&mut self, dst: &mut [u8]) {
         debug_assert!(dst.len() <= WIDE);
@@ -124,7 +128,7 @@ impl<'a, T: Copy + RingType> ShortBuffer for RingView<'a, T> {
     #[inline(always)]
     fn short_bytes(&self) -> &[u8] {
         let len = self.len().min(T::RING_LIMIT as usize);
-        let index = self.head % T::RING_SIZE as usize;
+        let index = (self.head % T::RING_SIZE as usize) + T::RING_LIMIT as usize;
         &self.ring[index..index + len]
     }
 }
@@ -132,9 +136,11 @@ impl<'a, T: Copy + RingType> ShortBuffer for RingView<'a, T> {
 impl<'a, T: Copy + RingType> BitSrc for RingView<'a, T> {
     #[inline(always)]
     fn read_bytes(&self, idx: Idx) -> usize {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe read_unaligned with safe slice operations.
         assert!(mem::size_of::<usize>() <= WIDE);
-        let index = usize::from(idx) % T::RING_SIZE as usize;
-        unsafe { self.ring.as_ptr().add(index).cast::<usize>().read_unaligned().to_le() }
+        let index = (usize::from(idx) % T::RING_SIZE as usize) + T::RING_LIMIT as usize;
+        let bytes = &self.ring[index..index + mem::size_of::<usize>()];
+        usize::from_le_bytes(bytes.try_into().unwrap())
     }
 
     #[inline(always)]

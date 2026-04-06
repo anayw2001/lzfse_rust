@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::kit::CopyTypeIndex;
 use crate::kit::{Width, WIDE};
 use crate::lmd::{DMax, LiteralLen, MMax, MatchDistanceUnpack, MatchLen, Quad};
-use crate::lz::{self, LzWriter};
+use crate::lz::LzWriter;
 use crate::ops::{CopyLong, CopyShort, Pos, ShortLimit};
 use crate::types::{Idx, ShortBytes};
 
@@ -10,7 +10,6 @@ use super::object::Ring;
 use super::ring_type::RingType;
 
 use std::io::Write;
-use std::ptr;
 
 /// Ring LZ output.
 ///
@@ -28,21 +27,25 @@ impl<'a, O, T: RingType> RingLzWriter<'a, O, T> {
         Self { ring, inner, index: 0 }
     }
 
-    pub fn copy(&self, mut dst: &mut [u8], mut idx: Idx) {
+    pub fn copy(&self, dst: &mut [u8], mut idx: Idx) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe copy with safe slice operations.
         debug_assert!(dst.len() < T::RING_SIZE as usize / 2);
         debug_assert!(((Idx::from(self.index) - idx) as u32) < T::RING_SIZE / 2);
+        let mut off = 0;
         loop {
-            let len = dst.len();
-            let index = idx % T::RING_SIZE as usize;
-            let limit = T::RING_SIZE as usize - index;
-            let src = unsafe { self.ring.as_ptr().add(index) };
-            if len <= limit {
-                unsafe { ptr::copy_nonoverlapping(src, dst.as_mut_ptr(), len) };
+            let len = dst.len() - off;
+            if len == 0 {
                 break;
             }
-            unsafe { ptr::copy_nonoverlapping(src, dst.as_mut_ptr(), limit) };
+            let index = idx % T::RING_SIZE as usize;
+            let limit = T::RING_SIZE as usize - index;
+            if len <= limit {
+                dst[off..off + len].copy_from_slice(&self.ring[index..index + len]);
+                break;
+            }
+            dst[off..off + limit].copy_from_slice(&self.ring[index..index + limit]);
             idx += limit as u32;
-            dst = &mut dst[limit..];
+            off += limit;
         }
     }
 }
@@ -91,14 +94,15 @@ impl<'a, O: Write, T: RingType> LzWriter for RingLzWriter<'a, O, T> {
             let len = bytes.len();
             let dst_index = self.index as usize % T::RING_SIZE as usize;
             let limit = T::RING_SIZE as usize - dst_index;
-            let dst = unsafe { self.ring.as_mut_ptr().add(dst_index) };
+            // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer manipulation with safe read_long_raw on full slice.
+            let start = T::RING_LIMIT as usize + dst_index;
             if len < limit {
                 // Likely.
-                unsafe { bytes.read_long_raw(dst, len) };
+                bytes.read_long_raw(&mut self.ring.full_slice_mut()[start..], len);
                 self.index += len as u64;
                 break;
             }
-            unsafe { bytes.read_long_raw(dst, limit) };
+            bytes.read_long_raw(&mut self.ring.full_slice_mut()[start..], limit);
             self.index += limit as u64;
             self.flush(WIDE)?;
         }
@@ -116,8 +120,9 @@ impl<'a, O: Write, T: RingType> LzWriter for RingLzWriter<'a, O, T> {
         let len = bytes.len();
         let dst_index = self.index as usize % T::RING_SIZE as usize;
         self.index += len as u64;
-        let dst = unsafe { self.ring.as_mut_ptr().add(dst_index) };
-        unsafe { bytes.copy_short_raw::<CopyTypeIndex>(dst, len) };
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer manipulation with safe copy_short_raw on full slice.
+        let start = T::RING_LIMIT as usize + dst_index;
+        bytes.copy_short_raw::<CopyTypeIndex>(&mut self.ring.full_slice_mut()[start..], len);
         if dst_index + len >= T::RING_SIZE as usize {
             // Unlikely.
             self.flush(U::SHORT_LIMIT as usize)?;
@@ -162,26 +167,17 @@ impl<'a, O: Write, T: RingType> LzWriter for RingLzWriter<'a, O, T> {
             let dst_idx = Idx::from(self.index);
             self.index += len as u64;
             let dst_index = dst_idx % T::RING_SIZE as usize;
-            let dst = unsafe { self.ring.as_mut_ptr().add(dst_index) };
-            let dst_end = unsafe { dst.add(len as usize) };
-            let src = unsafe { dst.sub(distance as usize) as *const u8 };
-            // A, B, C, D branch predictability is data dependent.
-            // The Snappy dataset generally favours A > B > C > D.
-            if distance > dst_index as u32 + T::RING_LIMIT {
-                // A
-                unsafe { lz::write_match_16(src.add(T::RING_SIZE as usize), dst, dst_end) };
-            } else if distance > 16 {
-                // B
-                unsafe { lz::write_match_16(src, dst, dst_end) };
-            } else if distance > 8 {
-                // C
-                unsafe { lz::write_match_8(src, dst, dst_end, distance as usize) }
-            } else if distance == 0 {
-                // Unlikely
-                return Err(Error::BadDValue);
-            } else {
-                // D
-                unsafe { lz::write_match_x(src, dst, dst_end, distance as usize) };
+            // [PERFORMANCE_SENSITIVE] Replaced unsafe write_match with safe loop-based copy on full slice.
+            // This handles overlapping matches safely and allows over-writing into shadow zones.
+            let full_ring = self.ring.full_slice_mut();
+            let start = T::RING_LIMIT as usize;
+            for i in 0..len as usize {
+                let src_index = if distance > (dst_index + i) as u32 {
+                    (start + dst_index + i + T::RING_SIZE as usize) - distance as usize
+                } else {
+                    (start + dst_index + i) - distance as usize
+                };
+                full_ring[start + dst_index + i] = full_ring[src_index];
             }
             if (dst_index + len as usize) < T::RING_SIZE as usize {
                 // Likely.

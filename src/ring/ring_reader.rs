@@ -8,7 +8,6 @@ use super::ring_type::RingType;
 use super::ring_view::RingView;
 
 use std::io::{self, Read};
-use std::ptr;
 
 pub struct RingReader<'a, I, T> {
     ring: Ring<'a, T>,
@@ -46,13 +45,12 @@ impl<'a, I, T: RingBlock> RingReader<'a, I, T> {
 impl<'a, I, T: RingType> PeekData for RingReader<'a, I, T> {
     #[inline(always)]
     fn peek_data(&self, dst: &mut [u8]) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe copy with safe slice operations on full slice.
         debug_assert!(dst.len() <= WIDE);
         debug_assert!(self.head <= self.tail);
-        let index = self.head % T::RING_SIZE as usize;
+        let index = (self.head % T::RING_SIZE as usize) + T::RING_LIMIT as usize;
         let len = dst.len();
-        let src = unsafe { self.ring.as_ptr().add(index) };
-        let dst_ptr = dst.as_mut_ptr();
-        unsafe { ptr::copy_nonoverlapping(src, dst_ptr, len) };
+        dst.copy_from_slice(&self.ring.full_slice()[index..index + len]);
     }
 }
 

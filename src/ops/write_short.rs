@@ -5,8 +5,6 @@ use super::allocate::Allocate;
 use super::short_limit::ShortLimit;
 
 use std::io;
-use std::ptr;
-use std::slice;
 
 /// Low-level write buffer access methods.
 pub trait WriteShort: Allocate + ShortLimit {
@@ -52,69 +50,18 @@ pub trait WriteShort: Allocate + ShortLimit {
 
     #[inline(always)]
     fn write_short_bytes(&mut self, bytes: &[u8]) -> io::Result<()> {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe write with safe slice operations.
         assert!(bytes.len() <= Self::SHORT_LIMIT as usize);
-        let len = bytes.len();
-        let src = bytes.as_ptr();
-        self.allocate(len)?;
-        let dst = unsafe { self.short_ptr() };
-        unsafe { self.short_set(len as u32) };
-        unsafe { ptr::copy_nonoverlapping(src, dst, len) };
+        let len = bytes.len() as u32;
+        let block = self.short_block(len)?;
+        block.copy_from_slice(bytes);
         Ok(())
     }
 
-    #[inline(always)]
-    fn short_block(&mut self, len: u32) -> io::Result<&mut [u8]> {
-        assert!(len <= Self::SHORT_LIMIT);
-        unsafe { self.short_block_unchecked(len) }
-    }
-
-    /// Allocate and expose `len` byte block allowing us to write directly into the writer. Any
-    /// allocated but unwritten block bytes remain undefined.
-    ///
-    /// # Assert
-    ///
-    /// * `len <= Self::SHORT_LIMIT`
-    #[inline(always)]
-    unsafe fn short_block_unchecked(&mut self, len: u32) -> io::Result<&mut [u8]> {
-        debug_assert!(len <= Self::SHORT_LIMIT);
-        self.allocate(len as usize)?;
-        let ptr = self.short_ptr();
-        self.short_set(len);
-        Ok(slice::from_raw_parts_mut(ptr, len as usize))
-    }
+    fn short_block(&mut self, len: u32) -> io::Result<&mut [u8]>;
 
     #[allow(dead_code)]
-    #[inline(always)]
-    fn short_wide_block(&mut self, len: u32) -> io::Result<WideBytesMut<'_>> {
-        assert!(len <= Self::SHORT_LIMIT);
-        unsafe { self.short_wide_block_unchecked(len) }
-    }
-
-    /// Allocate and expose `len` byte block as `WideBytesMut` allowing us to write directly into the
-    /// writer. Any allocated but unwritten block bytes remain undefined.
-    ///
-    /// # Assert
-    ///
-    /// * `len <= Self::SHORT_LIMIT`
-    #[allow(dead_code)]
-    #[inline(always)]
-    unsafe fn short_wide_block_unchecked(&mut self, len: u32) -> io::Result<WideBytesMut<'_>> {
-        debug_assert!(len <= Self::SHORT_LIMIT);
-        let ptr = self.short_ptr();
-        self.allocate(len as usize + WIDE)?;
-        self.short_set(len);
-        Ok(WideBytesMut::from_raw_parts(ptr, len as usize))
-    }
-
-    /// Set the allocated bytes size to `len`.
-    ///
-    /// # Safety
-    ///
-    /// * `len` does not exceed the allocated byte length.
-    unsafe fn short_set(&mut self, len: u32);
-
-    /// Raw mut pointer to allocated bytes.
-    unsafe fn short_ptr(&mut self) -> *mut u8;
+    fn short_wide_block(&mut self, len: u32) -> io::Result<WideBytesMut<'_>>;
 }
 
 impl<T: WriteShort + ?Sized> WriteShort for &mut T {
@@ -162,47 +109,32 @@ impl<T: WriteShort + ?Sized> WriteShort for &mut T {
         (**self).short_block(len)
     }
 
-    #[inline(always)]
-    unsafe fn short_block_unchecked(&mut self, len: u32) -> io::Result<&mut [u8]> {
-        (**self).short_block_unchecked(len)
-    }
-
     #[allow(dead_code)]
     #[inline(always)]
     fn short_wide_block(&mut self, len: u32) -> io::Result<WideBytesMut<'_>> {
         (**self).short_wide_block(len)
     }
-
-    #[allow(dead_code)]
-    #[inline(always)]
-    unsafe fn short_wide_block_unchecked(&mut self, len: u32) -> io::Result<WideBytesMut<'_>> {
-        (**self).short_wide_block_unchecked(len)
-    }
-
-    #[inline(always)]
-    unsafe fn short_set(&mut self, len: u32) {
-        (**self).short_set(len)
-    }
-
-    #[inline(always)]
-    unsafe fn short_ptr(&mut self) -> *mut u8 {
-        (**self).short_ptr()
-    }
 }
 
 impl WriteShort for Vec<u8> {
     #[inline(always)]
-    unsafe fn short_set(&mut self, len: u32) {
-        debug_assert!(len as usize <= i32::MAX as usize);
-        debug_assert!(self.is_allocated(len as usize));
+    fn short_block(&mut self, len: u32) -> io::Result<&mut [u8]> {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe manual length management with safe resize.
+        let len = len as usize;
+        self.allocate(len)?;
         let index = self.len();
-        self.set_len(index + len as usize);
+        self.resize(index + len, 0);
+        Ok(&mut self[index..index + len])
     }
 
     #[inline(always)]
-    unsafe fn short_ptr(&mut self) -> *mut u8 {
+    fn short_wide_block(&mut self, len: u32) -> io::Result<WideBytesMut<'_>> {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe manual length management with safe resize.
+        let len = len as usize;
+        self.allocate(len + WIDE)?;
         let index = self.len();
-        self.as_mut_ptr().add(index)
+        self.resize(index + len + WIDE, 0);
+        Ok(WideBytesMut::from_bytes(&mut self[index..index + len + WIDE], len))
     }
 }
 

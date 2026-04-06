@@ -59,11 +59,11 @@ impl Buffer {
             }
             let limit = LITERALS_PER_BLOCK - self.literals.len() as u32;
             if Fse::MAX_LITERAL_LEN as u32 <= limit {
-                unsafe { self.literals.push_unchecked_max(literals) };
-                unsafe { self.push_l(Fse::MAX_LITERAL_LEN) };
+                self.literals.push_unchecked_max(literals);
+                self.push_l(Fse::MAX_LITERAL_LEN);
             } else if limit != 0 {
-                unsafe { self.literals.push_unchecked(literals, limit) };
-                unsafe { self.push_l(limit as u16) };
+                self.literals.push_unchecked(literals, limit);
+                self.push_l(limit as u16);
                 return false;
             } else {
                 return false;
@@ -75,36 +75,36 @@ impl Buffer {
         let mut literal_len = literals.len();
         let limit = LITERALS_PER_BLOCK - self.literals.len() as u32;
         if literal_len <= limit as usize {
-            unsafe { self.literals.push_unchecked(literals, literal_len as u32) };
+            self.literals.push_unchecked(literals, literal_len as u32);
         } else if limit != 0 {
-            unsafe { self.literals.push_unchecked(literals, limit) };
-            unsafe { self.push_l(limit as u16) };
+            self.literals.push_unchecked(literals, limit);
+            self.push_l(limit as u16);
             return false;
         } else {
             return false;
         }
         while *match_len > Fse::MAX_MATCH_LEN as u32 {
-            unsafe { self.push_lmd(literal_len as u16, Fse::MAX_MATCH_LEN, match_distance) };
+            self.push_lmd(literal_len as u16, Fse::MAX_MATCH_LEN, match_distance);
             *match_len -= Fse::MAX_MATCH_LEN as u32;
             literal_len = 0;
             if self.lmds.len() == LMDS_PER_BLOCK as usize {
                 return false;
             }
         }
-        unsafe { self.push_lmd(literal_len as u16, *match_len as u16, match_distance) };
+        self.push_lmd(literal_len as u16, *match_len as u16, match_distance);
         *match_len = 0;
         true
     }
 
     #[inline(always)]
-    unsafe fn push_l(&mut self, l: u16) {
+    fn push_l(&mut self, l: u16) {
         debug_assert!(l <= Fse::MAX_LITERAL_LEN);
         self.match_distance = 1;
         self.lmds.push_unchecked(LmdPack::<Fse>::new(l, 0, 1));
     }
 
     #[inline(always)]
-    unsafe fn push_lmd(&mut self, l: u16, m: u16, mut d: u32) {
+    fn push_lmd(&mut self, l: u16, m: u16, mut d: u32) {
         debug_assert_ne!(d, 0);
         if self.match_distance == d {
             self.match_distance = d;

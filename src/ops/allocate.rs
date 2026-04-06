@@ -3,21 +3,15 @@ use std::io;
 pub trait Allocate {
     /// Allocate `len` bytes returning `io::ErrorKind::Other` in case of failure.
     fn allocate(&mut self, len: usize) -> io::Result<()>;
-
-    fn is_allocated(&mut self, len: usize) -> bool;
 }
 
 impl<T: Allocate + ?Sized> Allocate for &mut T {
     #[inline(always)]
-    fn allocate(&mut self, len: usize) -> io::Result<()> {
-        (**self).allocate(len)
-    }
-
-    #[inline(always)]
-    fn is_allocated(&mut self, len: usize) -> bool {
-        (**self).is_allocated(len)
+    fn allocate(&mut self, additional: usize) -> io::Result<()> {
+        (**self).allocate(additional)
     }
 }
+
 
 impl Allocate for Vec<u8> {
     // TODO: Issue 48043, use `vec::try_reserve`
@@ -34,14 +28,10 @@ impl Allocate for Vec<u8> {
         Ok(())
     }
 
-    #[cfg(target_pointer_width = "64")]
+    #[inline(always)]
     fn allocate(&mut self, additional: usize) -> io::Result<()> {
         self.reserve(additional);
         Ok(())
     }
-
-    #[inline(always)]
-    fn is_allocated(&mut self, len: usize) -> bool {
-        len <= self.capacity().wrapping_sub(self.len())
     }
-}
+

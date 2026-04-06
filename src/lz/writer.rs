@@ -4,9 +4,7 @@ use crate::ops::{CopyLong, ShortLimit};
 use crate::types::ShortBytes;
 use crate::{error::Error, ops::CopyShort};
 
-use super::object;
-
-use std::mem;
+use std::io;
 
 /// LZ77 type output stage. Data is reconstructed using literal bytes and matches.
 pub trait LzWriter: ShortLimit {
@@ -100,13 +98,13 @@ impl LzWriter for Vec<u8> {
     const MAX_MATCH_LEN: u32 = u32::MAX;
 
     fn write_bytes_long<T: CopyLong>(&mut self, bytes: T) -> crate::Result<()> {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer management with safe resize.
         let len = bytes.len();
         self.reserve(len + WIDE);
         let index = self.len();
-        unsafe {
-            bytes.copy_long_raw(self.as_mut_ptr().add(index), len);
-            self.set_len(index + len);
-        }
+        self.resize(index + len + WIDE, 0);
+        bytes.copy_long_raw(&mut self[index..], len);
+        self.truncate(index + len);
         Ok(())
     }
 
@@ -116,26 +114,27 @@ impl LzWriter for Vec<u8> {
         &mut self,
         bytes: ShortBytes<T, W>,
     ) -> crate::Result<()> {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer management with safe resize.
         assert!(T::SHORT_LIMIT <= Self::SHORT_LIMIT);
         let len = bytes.len();
         self.reserve(len + WIDE);
         let index = self.len();
-        unsafe {
-            bytes.copy_short_raw::<CopyTypeIndex>(self.as_mut_ptr().add(index), len);
-            self.set_len(index + len);
-        }
+        self.resize(index + len + WIDE, 0);
+        bytes.copy_short_raw::<CopyTypeIndex>(&mut self[index..], len);
+        self.truncate(index + len);
         Ok(())
     }
 
     #[inline(always)]
     fn write_quad(&mut self, bytes: u32, len: LiteralLen<Quad>) -> crate::Result<()> {
-        let len = len.get();
-        self.reserve(mem::size_of::<u32>());
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe write_unaligned with safe slice operations.
+        let len = len.get() as usize;
+        self.reserve(4);
         let index = self.len();
-        unsafe {
-            self.as_mut_ptr().add(index).cast::<u32>().write_unaligned(bytes);
-            self.set_len(index + len as usize);
-        }
+        self.resize(index + 4, 0);
+        let bytes_le = bytes.to_le_bytes();
+        self[index..index + 4].copy_from_slice(&bytes_le);
+        self.truncate(index + len);
         Ok(())
     }
 
@@ -149,29 +148,24 @@ impl LzWriter for Vec<u8> {
     where
         T: DMax + MMax,
     {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe write_match with safe loop-based copy.
         assert!(T::MAX_MATCH_LEN as u32 <= Self::MAX_MATCH_LEN);
         assert!(T::MAX_MATCH_DISTANCE <= Self::MAX_MATCH_DISTANCE);
-        let len = len.get();
+        let len = len.get() as usize;
         let distance = distance.get() as usize;
         let dst_index = self.len();
         if distance <= dst_index {
             // Likely
             let src_index = dst_index - distance;
-            self.reserve(dst_index + len as usize + 32);
-            let src = unsafe { self.as_ptr().add(src_index) };
-            let dst = unsafe { self.as_mut_ptr().add(dst_index) };
-            let dst_end = unsafe { dst.add(len as usize) };
-            if distance > 16 {
-                unsafe { object::write_match_16(src, dst, dst_end) };
-            } else if distance > 8 {
-                unsafe { object::write_match_8(src, dst, dst_end, distance) }
-            } else if distance == 0 {
+            self.reserve(dst_index + len + 32);
+            self.resize(dst_index + len, 0);
+            if distance == 0 {
                 // Unlikely
                 return Err(Error::BadDValue);
-            } else {
-                unsafe { object::write_match_x(src, dst, dst_end, distance) };
-            };
-            unsafe { self.set_len(dst_index + len as usize) };
+            }
+            for i in 0..len {
+                self[dst_index + i] = self[src_index + i];
+            }
             Ok(())
         } else {
             // Unlikely

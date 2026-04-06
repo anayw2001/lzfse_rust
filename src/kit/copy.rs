@@ -1,13 +1,7 @@
 use super::wide::Width;
 
-use std::ptr;
-
 pub trait CopyType {
-    /// # Safety
-    ///
-    /// * `src` is valid for `len + W::WIDTH` byte reads.
-    /// * `dst` is valid for `len + W::WIDTH` byte writes.
-    unsafe fn wide_copy<W: Width>(src: *const u8, dst: *mut u8, len: usize);
+    fn wide_copy<W: Width>(src: &[u8], dst: &mut [u8], len: usize);
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -15,11 +9,21 @@ pub struct CopyTypeIndex;
 
 impl CopyType for CopyTypeIndex {
     #[inline(always)]
-    unsafe fn wide_copy<W: Width>(src: *const u8, dst: *mut u8, len: usize) {
+    fn wide_copy<W: Width>(src: &[u8], dst: &mut [u8], len: usize) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe wide copy with safe slice operations.
         let mut off = 0;
         loop {
-            ptr::copy_nonoverlapping(src.add(off), dst.add(off), W::WIDTH);
-            off += W::WIDTH;
+            let chunk_len = W::WIDTH;
+            if off + chunk_len <= src.len() && off + chunk_len <= dst.len() {
+                dst[off..off + chunk_len].copy_from_slice(&src[off..off + chunk_len]);
+            } else {
+                let remaining = len.saturating_sub(off);
+                if remaining > 0 {
+                    dst[off..off + remaining].copy_from_slice(&src[off..off + remaining]);
+                }
+                break;
+            }
+            off += chunk_len;
             if off >= len {
                 break;
             }
@@ -33,13 +37,22 @@ pub struct CopyTypePtr;
 
 impl CopyType for CopyTypePtr {
     #[inline(always)]
-    unsafe fn wide_copy<W: Width>(mut src: *const u8, mut dst: *mut u8, len: usize) {
-        let dst_end = dst.add(len);
+    fn wide_copy<W: Width>(src: &[u8], dst: &mut [u8], len: usize) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe wide copy with safe slice operations.
+        let mut off = 0;
         loop {
-            ptr::copy_nonoverlapping(src, dst, W::WIDTH);
-            dst = dst.add(W::WIDTH);
-            src = src.add(W::WIDTH);
-            if dst >= dst_end {
+            let chunk_len = W::WIDTH;
+            if off + chunk_len <= src.len() && off + chunk_len <= dst.len() {
+                dst[off..off + chunk_len].copy_from_slice(&src[off..off + chunk_len]);
+            } else {
+                let remaining = len.saturating_sub(off);
+                if remaining > 0 {
+                    dst[off..off + remaining].copy_from_slice(&src[off..off + remaining]);
+                }
+                break;
+            }
+            off += chunk_len;
+            if off >= len {
                 break;
             }
         }
@@ -52,22 +65,37 @@ pub struct CopyTypeLong;
 
 impl CopyType for CopyTypeLong {
     #[inline(always)]
-    unsafe fn wide_copy<W: Width>(src: *const u8, dst: *mut u8, len: usize) {
+    fn wide_copy<W: Width>(src: &[u8], dst: &mut [u8], len: usize) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe wide copy with safe slice operations.
         const K: usize = 8;
         let mut off = 0;
         if len >= W::WIDTH * K {
-            let wide_len = (len / W::WIDTH / K) * W::WIDTH * K;
+            let chunk_len = W::WIDTH * K;
+            let wide_len = (len / chunk_len) * chunk_len;
             loop {
-                ptr::copy_nonoverlapping(src.add(off), dst.add(off), W::WIDTH * K);
-                off += W::WIDTH * K;
+                if off + chunk_len <= src.len() && off + chunk_len <= dst.len() {
+                    dst[off..off + chunk_len].copy_from_slice(&src[off..off + chunk_len]);
+                } else {
+                    break;
+                }
+                off += chunk_len;
                 if off == wide_len {
                     break;
                 }
             }
         }
         loop {
-            ptr::copy_nonoverlapping(src.add(off), dst.add(off), W::WIDTH);
-            off += W::WIDTH;
+            let chunk_len = W::WIDTH;
+            if off + chunk_len <= src.len() && off + chunk_len <= dst.len() {
+                dst[off..off + chunk_len].copy_from_slice(&src[off..off + chunk_len]);
+            } else {
+                let remaining = len.saturating_sub(off);
+                if remaining > 0 {
+                    dst[off..off + remaining].copy_from_slice(&src[off..off + remaining]);
+                }
+                break;
+            }
+            off += chunk_len;
             if off >= len {
                 break;
             }

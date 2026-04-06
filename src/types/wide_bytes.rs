@@ -31,17 +31,19 @@ impl<'a> WideBytes<'a> {
 
 impl<'a> CopyLong for WideBytes<'a> {
     #[inline(always)]
-    unsafe fn copy_long_raw(&self, dst: *mut u8, len: usize) {
+    fn copy_long_raw(&self, dst: &mut [u8], len: usize) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe wide copy with safe wide_copy.
         debug_assert!(len <= self.len());
-        CopyTypeLong::wide_copy::<W00>(self.0.as_ptr(), dst, len);
+        CopyTypeLong::wide_copy::<W00>(self.0, dst, len);
     }
 }
 
 impl<'a> CopyShort for WideBytes<'a> {
     #[inline(always)]
-    unsafe fn copy_short_raw<V: CopyType>(&self, dst: *mut u8, len: usize) {
+    fn copy_short_raw<V: CopyType>(&self, dst: &mut [u8], len: usize) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe wide copy with safe wide_copy.
         debug_assert!(len <= self.len());
-        V::wide_copy::<W00>(self.0.as_ptr(), dst, len);
+        V::wide_copy::<W00>(self.0, dst, len);
     }
 }
 

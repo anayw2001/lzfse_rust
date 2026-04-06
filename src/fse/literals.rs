@@ -19,28 +19,28 @@ pub struct Literals(Box<[u8]>, pub usize);
 
 impl Literals {
     #[inline(always)]
-    pub unsafe fn push_unchecked_max<I>(&mut self, literals: &mut I)
+    pub fn push_unchecked_max<I>(&mut self, literals: &mut I)
     where
         I: ShortBuffer,
     {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer manipulation with safe slice indexing.
         assert!(Fse::MAX_LITERAL_LEN as u32 <= I::SHORT_LIMIT);
         debug_assert!(self.1 <= LITERALS_PER_BLOCK as usize);
         debug_assert!(self.1 + Fse::MAX_LITERAL_LEN as usize <= LITERALS_PER_BLOCK as usize);
-        let ptr = self.0.as_mut_ptr().add(self.1);
-        literals.read_short_raw::<CopyTypeIndex>(ptr, Fse::MAX_LITERAL_LEN as usize);
+        literals.read_short_raw::<CopyTypeIndex>(&mut self.0[self.1..], Fse::MAX_LITERAL_LEN as usize);
         self.1 += Fse::MAX_LITERAL_LEN as usize;
     }
 
     #[inline(always)]
-    pub unsafe fn push_unchecked<I>(&mut self, literals: &mut I, n_literals: u32)
+    pub fn push_unchecked<I>(&mut self, literals: &mut I, n_literals: u32)
     where
         I: ShortBuffer,
     {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer manipulation with safe slice indexing.
         debug_assert!(self.1 <= LITERALS_PER_BLOCK as usize);
         debug_assert!(self.1 + n_literals as usize <= LITERALS_PER_BLOCK as usize);
         debug_assert!(n_literals <= I::SHORT_LIMIT);
-        let ptr = self.0.as_mut_ptr().add(self.1);
-        literals.read_short_raw::<CopyTypeIndex>(ptr, n_literals as usize);
+        literals.read_short_raw::<CopyTypeIndex>(&mut self.0[self.1..], n_literals as usize);
         self.1 += n_literals as usize;
     }
 
@@ -203,7 +203,7 @@ mod tests {
             self.src.reset();
             self.n_literals = literals.len();
             assert!(self.n_literals <= LITERALS_PER_BLOCK as usize);
-            unsafe { self.src.push_unchecked(&mut literals, self.n_literals as u32) }
+            self.src.push_unchecked(&mut literals, self.n_literals as u32);
             assert_eq!(literals.len(), 0);
         }
 

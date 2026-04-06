@@ -4,7 +4,7 @@ use crate::ops::{
     Allocate, CopyLong, Flush, FlushLimit, PatchInto, Pos, ShortLimit, Truncate, WriteData,
     WriteLong, WriteShort,
 };
-use crate::types::{Idx, ShortWriter};
+use crate::types::{Idx, ShortWriter, WideBytesMut};
 
 use super::object::Ring;
 use super::ring_block::RingBlock;
@@ -12,7 +12,6 @@ use super::ring_type::RingType;
 
 use std::io::{self, prelude::*};
 use std::mem;
-use std::ptr;
 
 pub struct RingShortWriter<'a, O, T> {
     ring: Ring<'a, T>,
@@ -93,22 +92,16 @@ impl<'a, O, T: RingBlock> Allocate for RingShortWriter<'a, O, T> {
             Err(io::ErrorKind::Other.into())
         }
     }
-
-    #[inline(always)]
-    fn is_allocated(&mut self, _: usize) -> bool {
-        // Lazy, we'll catch errors on flush.
-        true
-    }
 }
 
 impl<'a, O, T: RingBlock> BitDst for RingShortWriter<'a, O, T> {
     #[inline(always)]
     fn push_bytes_unchecked(&mut self, bytes: usize, n_bytes: usize) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe write_unaligned with safe slice operations.
         debug_assert!(n_bytes <= mem::size_of::<usize>());
         let index = self.idx % T::RING_SIZE as usize;
-        unsafe {
-            self.ring.as_mut_ptr().add(index).cast::<usize>().write_unaligned(bytes.to_le());
-        }
+        let dst = &mut self.ring[index..index + mem::size_of::<usize>()];
+        dst.copy_from_slice(&bytes.to_le_bytes());
         self.idx += n_bytes as u32;
     }
 
@@ -135,12 +128,11 @@ impl<'a, O, T> Truncate for RingShortWriter<'a, O, T> {
 impl<'a, O: Write, T: RingType> WriteData for RingShortWriter<'a, O, T> {
     #[inline(always)]
     fn write_data(&mut self, src: &[u8]) {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe copy with safe slice operations.
         debug_assert!(src.len() <= WIDE);
         let len = src.len();
         let index = self.idx % T::RING_SIZE as usize;
-        let dst = unsafe { self.ring.as_mut_ptr().add(index) };
-        let src_ptr = src.as_ptr();
-        unsafe { ptr::copy_nonoverlapping(src_ptr, dst, len) };
+        self.ring[index..index + len].copy_from_slice(src);
         self.idx += len as u32;
     }
 }
@@ -152,8 +144,9 @@ impl<'a, O, T: RingType> WriteLong for RingShortWriter<'a, O, T> {
         let len = src.len();
         let index = self.idx % T::RING_SIZE as usize;
         if index + len <= T::RING_SIZE as usize {
-            let dst = unsafe { self.ring.as_mut_ptr().add(index) };
-            unsafe { src.copy_long_raw(dst, len) }
+            // [PERFORMANCE_SENSITIVE] Replaced unsafe copy with safe slice operations.
+            let dst = &mut self.ring[index..index + len];
+            src.copy_long_raw(dst, len);
         }
         self.idx += len as u32;
         Ok(())
@@ -172,15 +165,24 @@ impl<'a, O, T: RingType> PatchInto for RingShortWriter<'a, O, T> {
 
 impl<'a, O, T: RingBlock> WriteShort for RingShortWriter<'a, O, T> {
     #[inline(always)]
-    unsafe fn short_set(&mut self, len: u32) {
+    fn short_block(&mut self, len: u32) -> io::Result<&mut [u8]> {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer management with safe slice operations.
         debug_assert!(len <= Self::SHORT_LIMIT);
+        let index = self.idx % T::RING_SIZE as usize;
+        let block = &mut self.ring[index..index + len as usize];
         self.idx += len;
+        Ok(block)
     }
 
+    #[allow(dead_code)]
     #[inline(always)]
-    unsafe fn short_ptr(&mut self) -> *mut u8 {
+    fn short_wide_block(&mut self, len: u32) -> io::Result<WideBytesMut<'_>> {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer management with safe slice operations.
+        debug_assert!(len <= Self::SHORT_LIMIT);
         let index = self.idx % T::RING_SIZE as usize;
-        self.ring.as_mut_ptr().add(index)
+        let block = WideBytesMut::from_bytes(&mut self.ring[index..index + len as usize + WIDE], len as usize);
+        self.idx += len;
+        Ok(block)
     }
 }
 

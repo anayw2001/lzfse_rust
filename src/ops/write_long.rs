@@ -15,12 +15,13 @@ pub trait WriteLong {
 impl WriteLong for Vec<u8> {
     #[inline(always)]
     fn write_long<I: CopyLong>(&mut self, src: I) -> io::Result<()> {
+        // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer management with safe resize.
         let len = src.len();
         let index = self.len();
         self.allocate(len + WIDE)?;
-        let dst = unsafe { self.as_mut_ptr().add(index) };
-        unsafe { src.copy_long_raw(dst, len) };
-        unsafe { self.set_len(index + len) };
+        self.resize(index + len + WIDE, 0);
+        src.copy_long_raw(&mut self[index..], len);
+        self.truncate(index + len);
         Ok(())
     }
 }

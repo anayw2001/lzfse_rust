@@ -64,11 +64,11 @@ impl Backend for VnBackend {
         self.n_literals += literals.len() as u32;
         while literals.len() >= 0x10 {
             let len = literals.len().min(0x10F) as u32;
-            unsafe { lrg_l(dst, &mut literals, len) };
+            lrg_l(dst, &mut literals, len);
         }
         if literals.len() > 0 {
             let len = literals.len() as u32;
-            unsafe { sml_l(dst, &mut literals, len) };
+            sml_l(dst, &mut literals, len);
         }
         Ok(())
     }
@@ -90,36 +90,36 @@ impl Backend for VnBackend {
         self.n_match_bytes += match_len;
         while literals.len() >= 0x10 {
             let len = literals.len().min(0x10F) as u32;
-            unsafe { lrg_l(dst, &mut literals, len) };
+            lrg_l(dst, &mut literals, len);
         }
         if literals.len() >= 0x04 {
             let len = literals.len() as u32;
-            unsafe { sml_l(dst, &mut literals, len) };
+            sml_l(dst, &mut literals, len);
         }
         let literal_len = literals.len();
         let n = opc::match_len_x(literal_len as u32).min(match_len);
         match_len -= n;
         if match_distance == self.match_distance {
             if literal_len == 0 {
-                unsafe { sml_m(dst, n) };
+                sml_m(dst, n);
             } else {
-                unsafe { pre_d(dst, &mut literals, literal_len as u32, n) };
+                pre_d(dst, &mut literals, literal_len as u32, n);
             }
         } else if match_distance < 0x600 {
-            unsafe { sml_d(dst, &mut literals, literal_len as u32, n, match_distance) };
+            sml_d(dst, &mut literals, literal_len as u32, n, match_distance);
         } else if match_distance >= 0x4000 || match_len == 0 || n + match_len > 0x22 {
-            unsafe { lrg_d(dst, &mut literals, literal_len as u32, n, match_distance) };
+            lrg_d(dst, &mut literals, literal_len as u32, n, match_distance);
         } else {
-            unsafe { med_d(dst, &mut literals, literal_len as u32, n, match_distance) };
+            med_d(dst, &mut literals, literal_len as u32, n, match_distance);
         }
         self.match_distance = match_distance;
         while match_len > 0x0F {
             let limit = match_len.min(0x10F);
-            unsafe { lrg_m(dst, limit) };
+            lrg_m(dst, limit);
             match_len -= limit;
         }
         if match_len > 0 {
-            unsafe { sml_m(dst, match_len) };
+            sml_m(dst, match_len);
         }
         Ok(())
     }
@@ -135,49 +135,51 @@ impl Backend for VnBackend {
     }
 }
 
-unsafe fn sml_l<I: CopyShort, O: ShortWriter>(dst: &mut O, src: &mut I, literal_len: u32) {
+fn sml_l<I: CopyShort, O: ShortWriter>(dst: &mut O, src: &mut I, literal_len: u32) {
     l(dst, src, literal_len, opc::encode_sml_l(literal_len), 1)
 }
 
-unsafe fn lrg_l<I: CopyShort, O: ShortWriter>(dst: &mut O, src: &mut I, literal_len: u32) {
+fn lrg_l<I: CopyShort, O: ShortWriter>(dst: &mut O, src: &mut I, literal_len: u32) {
     l(dst, src, literal_len, opc::encode_lrg_l(literal_len), 2)
 }
 
-unsafe fn l<I: CopyShort, O: ShortWriter>(
+fn l<I: CopyShort, O: ShortWriter>(
     dst: &mut O,
     src: &mut I,
     literal_len: u32,
     opu: u32,
     op_len: u32,
 ) {
+    // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer manipulation with safe short_wide_block and truncate.
     debug_assert!(literal_len <= 0x10F);
     debug_assert!(literal_len as usize <= src.len());
     debug_assert!(op_len <= 3);
-    assert!(dst.is_allocated(SLACK as usize + WIDE));
-    let ptr = dst.short_ptr();
-    ptr.cast::<u32>().write_unaligned(opu.to_le());
-    let ptr = ptr.add(op_len as usize);
-    src.read_short_raw::<CopyTypeIndex>(ptr, literal_len as usize);
-    dst.short_set(op_len + literal_len);
+    let start_pos = dst.pos();
+    let mut block = dst.short_wide_block(op_len + literal_len).expect("internal error");
+    block.poke_at(0, &opu.to_le_bytes());
+    let full_block = block.into_full_slice();
+    src.read_short_raw::<CopyTypeIndex>(&mut full_block[op_len as usize..], literal_len as usize);
+    let _ = dst.truncate(start_pos + (op_len + literal_len));
 }
 
-unsafe fn sml_m<O: ShortWriter>(dst: &mut O, match_len: u32) {
+fn sml_m<O: ShortWriter>(dst: &mut O, match_len: u32) {
     m(dst, opc::encode_sml_m(match_len), 1);
 }
 
-unsafe fn lrg_m<O: ShortWriter>(dst: &mut O, match_len: u32) {
+fn lrg_m<O: ShortWriter>(dst: &mut O, match_len: u32) {
     m(dst, opc::encode_lrg_m(match_len), 2);
 }
 
-unsafe fn m<O: ShortWriter>(dst: &mut O, opu: u32, op_len: u32) {
+fn m<O: ShortWriter>(dst: &mut O, opu: u32, op_len: u32) {
+    // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer manipulation with safe short_wide_block and truncate.
     debug_assert!(op_len <= 3);
-    assert!(dst.is_allocated(SLACK as usize + WIDE));
-    let ptr = dst.short_ptr();
-    ptr.cast::<u32>().write_unaligned(opu.to_le());
-    dst.short_set(op_len);
+    let start_pos = dst.pos();
+    let mut block = dst.short_wide_block(op_len).expect("internal error");
+    block.poke_at(0, &opu.to_le_bytes());
+    let _ = dst.truncate(start_pos + op_len);
 }
 
-unsafe fn pre_d<I: ShortBuffer, O: ShortWriter>(
+fn pre_d<I: ShortBuffer, O: ShortWriter>(
     dst: &mut O,
     src: &mut I,
     literal_len: u32,
@@ -186,7 +188,7 @@ unsafe fn pre_d<I: ShortBuffer, O: ShortWriter>(
     lmd(dst, src, literal_len, opc::encode_pre_d(literal_len, match_len), 1)
 }
 
-unsafe fn sml_d<I: ShortBuffer, O: ShortWriter>(
+fn sml_d<I: ShortBuffer, O: ShortWriter>(
     dst: &mut O,
     src: &mut I,
     literal_len: u32,
@@ -196,7 +198,7 @@ unsafe fn sml_d<I: ShortBuffer, O: ShortWriter>(
     lmd(dst, src, literal_len, opc::encode_sml_d(literal_len, match_len, match_distance), 2)
 }
 
-unsafe fn med_d<I: ShortBuffer, O: ShortWriter>(
+fn med_d<I: ShortBuffer, O: ShortWriter>(
     dst: &mut O,
     src: &mut I,
     literal_len: u32,
@@ -206,7 +208,7 @@ unsafe fn med_d<I: ShortBuffer, O: ShortWriter>(
     lmd(dst, src, literal_len, opc::encode_med_d(literal_len, match_len, match_distance), 3)
 }
 
-unsafe fn lrg_d<I: ShortBuffer, O: ShortWriter>(
+fn lrg_d<I: ShortBuffer, O: ShortWriter>(
     dst: &mut O,
     src: &mut I,
     literal_len: u32,
@@ -216,21 +218,21 @@ unsafe fn lrg_d<I: ShortBuffer, O: ShortWriter>(
     lmd(dst, src, literal_len, opc::encode_lrg_d(literal_len, match_len, match_distance), 3)
 }
 
-unsafe fn lmd<I: ShortBuffer, O: ShortWriter>(
+fn lmd<I: ShortBuffer, O: ShortWriter>(
     dst: &mut O,
     src: &mut I,
     literal_len: u32,
     opu: u32,
     op_len: u32,
 ) {
+    // [PERFORMANCE_SENSITIVE] Replaced unsafe pointer manipulation with safe short_wide_block.
     debug_assert!(literal_len <= 4);
     debug_assert!(literal_len as usize <= src.len());
     debug_assert!(op_len <= 3);
-    assert!(dst.is_allocated(SLACK as usize + WIDE));
     let literal_bytes = src.peek_u32();
-    let ptr = dst.short_ptr();
-    ptr.cast::<u32>().write_unaligned(opu.to_le());
-    let ptr = ptr.add(op_len as usize);
-    ptr.cast::<u32>().write_unaligned(literal_bytes.to_le());
-    dst.short_set(op_len + literal_len);
+    let start_pos = dst.pos();
+    let mut block = dst.short_wide_block(op_len + literal_len).expect("internal error");
+    block.poke_at(0, &opu.to_le_bytes());
+    block.poke_at(op_len as usize, &literal_bytes.to_le_bytes());
+    let _ = dst.truncate(start_pos + (op_len + literal_len));
 }

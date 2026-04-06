@@ -16,22 +16,14 @@ pub const OVERMATCH_LEN: usize = 5 * mem::size_of::<usize>();
 pub struct Ring<'a, T>(&'a mut [u8], PhantomData<T>);
 
 impl<'a, T: RingType> Ring<'a, T> {
-    /// Returns a raw mut pointer to the start of the nominal data range.
     #[inline(always)]
-    pub fn as_mut_ptr(&mut self) -> *mut u8 {
-        unsafe { self.0.as_mut_ptr().add(T::RING_LIMIT as usize) }
-    }
-
-    /// Returns a raw pointer to the start of the nominal data range.
-    #[inline(always)]
-    pub fn as_ptr(&self) -> *const u8 {
-        unsafe { self.0.as_ptr().add(T::RING_LIMIT as usize) }
+    pub fn full_slice(&self) -> &[u8] {
+        self.0
     }
 
     #[inline(always)]
-    pub fn nominal_slice(&self) -> &[u8] {
-        let start = T::RING_LIMIT as usize;
-        &self.0[start..start + T::RING_SIZE as usize]
+    pub fn full_slice_mut(&mut self) -> &mut [u8] {
+        self.0
     }
 }
 
